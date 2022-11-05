@@ -2,9 +2,13 @@ use derive_more::{Display, Error};
 use gst::{
     prelude::GstBinExtManual,
     traits::{ElementExt, GstObjectExt},
+    Pipeline,
 };
 use std::process::Command;
 use structopt::StructOpt;
+
+// #[cfg(gst_app)]
+mod app;
 
 #[derive(Debug, StructOpt)]
 enum Gst {
@@ -15,6 +19,8 @@ enum Gst {
     },
     /// run gstremer with gstreamer-rs
     Run,
+    /// use appsrc and textoverlay
+    AppSrcText,
 }
 
 #[derive(Debug, Display, Error)]
@@ -27,7 +33,7 @@ struct ErrorMessage {
 }
 
 /// run gstreamer
-fn gst_main_loop() -> Result<(), anyhow::Error> {
+fn build_gst_run() -> Result<Pipeline, anyhow::Error> {
     gst::init()?;
 
     // setup element
@@ -38,7 +44,10 @@ fn gst_main_loop() -> Result<(), anyhow::Error> {
     // add to pipeline and link elements
     pipeline.add_many(&[&src, &sink])?;
     gst::Element::link_many(&[&src, &sink])?;
+    Ok(pipeline)
+}
 
+fn run_pipeline(pipeline: gst::Pipeline) -> Result<(), anyhow::Error> {
     // start playing
     pipeline.set_state(gst::State::Playing)?;
     let bus = pipeline
@@ -96,7 +105,15 @@ fn main() {
             }
         }
         Gst::Run => {
-            if let Err(e) = gst_main_loop() {
+            let pipeline = build_gst_run().expect("failed to build gst run pipeline");
+            if let Err(e) = run_pipeline(pipeline) {
+                log::error!("gstream error: {:?}", e);
+            }
+        }
+        Gst::AppSrcText => {
+            let pipeline =
+                app::build_appsrc_text_overlay().expect("failed to build gst run pipeline");
+            if let Err(e) = run_pipeline(pipeline) {
                 log::error!("gstream error: {:?}", e);
             }
         }

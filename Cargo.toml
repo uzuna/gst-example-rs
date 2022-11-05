@@ -9,6 +9,7 @@ edition = "2021"
 env_logger = "0.9.1"
 log = "0.4.17"
 structopt = "0.3.26"
-gst = { package = "gstreamer", git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs", branch = "0.19", version = "0.19.1" }
 anyhow = "1.0.66"
 derive_more = "0.99.17"
+gst = { package = "gstreamer", git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs", branch = "0.19", version = "0.19.1" }
+gst-app = { package = "gstreamer-app", git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs", branch = "0.19", version = "0.19"}
