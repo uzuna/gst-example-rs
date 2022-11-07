@@ -1,11 +1,11 @@
 use derive_more::{Display, Error};
 use gst::{
-    prelude::GstBinExtManual,
+    prelude::{GObjectExtManualGst, GstBinExtManual},
     traits::{ElementExt, GstObjectExt},
-    Pipeline,
+    Element, Pipeline,
 };
 use std::process::Command;
-use structopt::StructOpt;
+use structopt::{clap::arg_enum, StructOpt};
 
 // #[cfg(gst_app)]
 mod app;
@@ -16,13 +16,56 @@ enum Gst {
     Launch {
         #[structopt(long)]
         print: bool,
+        #[structopt(flatten)]
+        testsrc: VideoTestSrcOpt,
     },
     /// run gstremer with gstreamer-rs
-    Run,
+    Run {
+        #[structopt(flatten)]
+        testsrc: VideoTestSrcOpt,
+    },
     /// use appsrc and textoverlay
-    AppSrcText,
+    AppSrcText {
+        #[structopt(flatten)]
+        testsrc: VideoTestSrcOpt,
+    },
 }
 
+#[derive(Debug, StructOpt)]
+struct VideoTestSrcOpt {
+    #[structopt(default_value, long, possible_values = &VideoTestSrcPattern::variants())]
+    pattern: VideoTestSrcPattern,
+}
+
+impl VideoTestSrcOpt {
+    fn write_property_string(&self, v: &mut Vec<String>) {
+        v.push(format!("pattern={}", self.pattern as u32));
+    }
+    fn set_properties(&self, e: &Element) {
+        e.set_property_from_str("pattern", format!("{}", self.pattern as u32).as_str());
+    }
+}
+
+arg_enum! {
+    #[repr(u32)]
+    #[derive(Debug, Clone, Copy)]
+    enum VideoTestSrcPattern {
+        Smpte = 0,
+        Snow = 1,
+        Black = 2,
+        White = 3,
+        Checker1 = 7,
+        Checker2 = 8,
+        Smpte75 = 13,
+        Ball = 18,
+    }
+}
+
+impl Default for VideoTestSrcPattern {
+    fn default() -> Self {
+        Self::Smpte
+    }
+}
 #[derive(Debug, Display, Error)]
 #[display(fmt = "Received error from {}: {} (debug: {:?})", src, error, debug)]
 struct ErrorMessage {
@@ -33,13 +76,14 @@ struct ErrorMessage {
 }
 
 /// run gstreamer
-fn build_gst_run() -> Result<Pipeline, anyhow::Error> {
+fn build_gst_run(testsrc: &VideoTestSrcOpt) -> Result<Pipeline, anyhow::Error> {
     gst::init()?;
 
     // setup element
     let pipeline = gst::Pipeline::new(None);
     let src = gst::ElementFactory::make("videotestsrc").build()?;
     let sink = gst::ElementFactory::make("autovideosink").build()?;
+    testsrc.set_properties(&src);
 
     // add to pipeline and link elements
     pipeline.add_many(&[&src, &sink])?;
@@ -89,8 +133,11 @@ fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     match opt {
-        Gst::Launch { print } => {
-            let args = ["videotestsrc", "!", "autovideosink"];
+        Gst::Launch { print, testsrc } => {
+            let mut args: Vec<String> = vec!["videotestsrc".to_string()];
+            testsrc.write_property_string(&mut args);
+            args.push("!".to_string());
+            args.push("autovideosink".to_string());
             if print {
                 println!("gst-launch-1.0 {}", args.join(" "));
             } else {
@@ -108,15 +155,15 @@ fn main() {
                 }
             }
         }
-        Gst::Run => {
-            let pipeline = build_gst_run().expect("failed to build gst run pipeline");
+        Gst::Run { testsrc } => {
+            let pipeline = build_gst_run(&testsrc).expect("failed to build gst run pipeline");
             if let Err(e) = run_pipeline(pipeline) {
                 log::error!("gstream error: {:?}", e);
             }
         }
-        Gst::AppSrcText => {
+        Gst::AppSrcText { testsrc } => {
             let pipeline =
-                app::build_appsrc_text_overlay().expect("failed to build gst run pipeline");
+                app::build_appsrc_text_overlay(&testsrc).expect("failed to build gst run pipeline");
             if let Err(e) = run_pipeline(pipeline) {
                 log::error!("gstream error: {:?}", e);
             }
