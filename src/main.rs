@@ -61,6 +61,10 @@ fn run_pipeline(pipeline: gst::Pipeline) -> Result<(), anyhow::Error> {
             MessageView::Eos(..) => break,
             MessageView::Error(err) => {
                 pipeline.set_state(gst::State::Null)?;
+                let error = err.error().to_string();
+                if error.contains("Output window was closed") {
+                    break;
+                }
                 return Err(ErrorMessage {
                     src: msg
                         .src()
