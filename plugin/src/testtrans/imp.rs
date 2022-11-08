@@ -1,8 +1,5 @@
 use gst::glib;
-use gst::prelude::ElementClassExt;
-use gst::prelude::PadExtManual;
 use gst::subclass::prelude::*;
-use gst::traits::ElementExt;
 use gst_base::subclass::prelude::BaseTransformImpl;
 use once_cell::sync::Lazy;
 

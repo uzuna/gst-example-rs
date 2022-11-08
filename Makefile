@@ -12,3 +12,13 @@ inspect: build
 .PHONY: run.trans
 run.trans: build
 	GST_DEBUG=1,testtrans:7 gst-launch-1.0 --gst-plugin-path=target/debug videotestsrc ! testtrans ! autovideosink
+
+.PHONY: fmt
+fmt:
+	cargo fmt
+	cargo clippy --fix --allow-staged
+
+.PHONY: check-fmt
+check-fmt:
+	cargo fmt --check
+	cargo clippy
