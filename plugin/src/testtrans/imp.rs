@@ -3,6 +3,7 @@ use gst::prelude::ElementClassExt;
 use gst::prelude::PadExtManual;
 use gst::subclass::prelude::*;
 use gst::traits::ElementExt;
+use gst_base::subclass::prelude::BaseTransformImpl;
 use once_cell::sync::Lazy;
 
 use super::CLASS_NAME;
@@ -16,37 +17,10 @@ static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
     )
 });
 
-pub struct TestTrans {
-    srcpad: gst::Pad,
-    sinkpad: gst::Pad,
-}
+#[derive(Default)]
+pub struct TestTrans {}
 
-impl TestTrans {
-    fn sink_chain(
-        &self,
-        pad: &gst::Pad,
-        buffer: gst::Buffer,
-    ) -> Result<gst::FlowSuccess, gst::FlowError> {
-        gst::log!(CAT, obj: pad, "Handling buffer {:?}", buffer);
-        self.srcpad.push(buffer)
-    }
-    fn sink_event(&self, pad: &gst::Pad, event: gst::Event) -> bool {
-        gst::log!(CAT, obj: pad, "Handling event {:?}", event);
-        self.srcpad.push_event(event)
-    }
-    fn sink_query(&self, pad: &gst::Pad, query: &mut gst::QueryRef) -> bool {
-        gst::log!(CAT, obj: pad, "Handling query {:?}", query);
-        self.srcpad.peer_query(query)
-    }
-    fn src_event(&self, pad: &gst::Pad, event: gst::Event) -> bool {
-        gst::log!(CAT, obj: pad, "Handling event {:?}", event);
-        self.sinkpad.push_event(event)
-    }
-    fn src_query(&self, pad: &gst::Pad, query: &mut gst::QueryRef) -> bool {
-        gst::log!(CAT, obj: pad, "Handling query {:?}", query);
-        self.sinkpad.peer_query(query)
-    }
-}
+impl TestTrans {}
 
 impl ElementImpl for TestTrans {
     // エレメントの仕様について記述する
@@ -102,14 +76,7 @@ impl ElementImpl for TestTrans {
     }
 }
 
-impl ObjectImpl for TestTrans {
-    fn constructed(&self) {
-        self.parent_constructed();
-        let obj = self.obj();
-        obj.add_pad(&self.sinkpad).unwrap();
-        obj.add_pad(&self.srcpad).unwrap();
-    }
-}
+impl ObjectImpl for TestTrans {}
 
 impl GstObjectImpl for TestTrans {}
 
@@ -117,51 +84,23 @@ impl GstObjectImpl for TestTrans {}
 impl ObjectSubclass for TestTrans {
     const NAME: &'static str = CLASS_NAME;
     type Type = super::TestTrans;
-    type ParentType = gst::Element;
+    type ParentType = gst_base::BaseTransform;
+}
 
-    fn with_class(klass: &Self::Class) -> Self {
-        let templ = klass.pad_template("sink").unwrap();
-        let sinkpad = gst::Pad::builder_with_template(&templ, Some("sink"))
-            .chain_function(|pad, parent, buffer| {
-                TestTrans::catch_panic_pad_function(
-                    parent,
-                    || Err(gst::FlowError::Error),
-                    |identity| identity.sink_chain(pad, buffer),
-                )
-            })
-            .event_function(|pad, parent, event| {
-                TestTrans::catch_panic_pad_function(
-                    parent,
-                    || false,
-                    |identity| identity.sink_event(pad, event),
-                )
-            })
-            .query_function(|pad, parent, query| {
-                TestTrans::catch_panic_pad_function(
-                    parent,
-                    || false,
-                    |identity| identity.sink_query(pad, query),
-                )
-            })
-            .build();
-
-        let templ = klass.pad_template("src").unwrap();
-        let srcpad = gst::Pad::builder_with_template(&templ, Some("src"))
-            .event_function(|pad, parent, event| {
-                TestTrans::catch_panic_pad_function(
-                    parent,
-                    || false,
-                    |identity| identity.src_event(pad, event),
-                )
-            })
-            .query_function(|pad, parent, query| {
-                TestTrans::catch_panic_pad_function(
-                    parent,
-                    || false,
-                    |identity| identity.src_query(pad, query),
-                )
-            })
-            .build();
-        Self { srcpad, sinkpad }
+impl BaseTransformImpl for TestTrans {
+    const MODE: gst_base::subclass::BaseTransformMode =
+        gst_base::subclass::BaseTransformMode::AlwaysInPlace;
+    const PASSTHROUGH_ON_SAME_CAPS: bool = true;
+    const TRANSFORM_IP_ON_PASSTHROUGH: bool = true;
+    fn transform_ip(&self, _buf: &mut gst::BufferRef) -> Result<gst::FlowSuccess, gst::FlowError> {
+        gst::trace!(CAT, imp: self, "transform_ip");
+        Ok(gst::FlowSuccess::Ok)
+    }
+    fn transform_ip_passthrough(
+        &self,
+        _buf: &gst::Buffer,
+    ) -> Result<gst::FlowSuccess, gst::FlowError> {
+        gst::trace!(CAT, imp: self, "transform_ip_passthrough");
+        Ok(gst::FlowSuccess::Ok)
     }
 }
