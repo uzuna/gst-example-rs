@@ -101,21 +101,24 @@ impl BaseTransformImpl for TestTrans {
         inbuf: &gst::Buffer,
         outbuf: &mut gst::BufferRef,
     ) -> Result<gst::FlowSuccess, gst::FlowError> {
-        // すでにメモリ確保済みの場合はこちらを使う
+        // バッファを確保済みの領域にコピーをする
         {
             let mut bw = outbuf.map_writable().unwrap();
             let br = inbuf.map_readable().unwrap();
             bw.copy_from_slice(br.as_slice());
         }
 
-        // copy_intoはメタデータ向けのコピー関数
+        // copy_intoは基本的にメタデータのコピーに使う
+        // 通常は TIMESTAMPS | META で良い
+        // FLAGSはSTBufferの制御のためでMEMORYの場合には使うのかも?
+        // TODO: DEEPはMETAの情報を揮発させないために必要?
         // MEMORYを指定することでバッファもコピーできるが確保済み領域に追加されるので
-        // 事前にoutbuf.remove_all_memoryでsizeを0にしなければ0データが混ざる恐れがある
+        // 事前にoutbuf.remove_all_memoryで全てのメモリを破棄しなければ期待するデータにならない
+        // この挙動はcopy_intoの前後でsize()を比較で見ることが出来る
         if let Err(_e) = inbuf.copy_into(
             outbuf,
             gst::BufferCopyFlags::TIMESTAMPS
                 | gst::BufferCopyFlags::META
-                | gst::BufferCopyFlags::FLAGS
                 | gst::BufferCopyFlags::DEEP,
             0,
             None,
@@ -124,7 +127,7 @@ impl BaseTransformImpl for TestTrans {
             return Err(gst::FlowError::Error);
         }
 
-        gst::trace!(CAT, imp: self, "transform {}", outbuf.size());
+        gst::trace!(CAT, imp: self, "transform");
         Ok(gst::FlowSuccess::Ok)
     }
 
