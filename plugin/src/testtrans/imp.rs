@@ -101,10 +101,21 @@ impl BaseTransformImpl for TestTrans {
         inbuf: &gst::Buffer,
         outbuf: &mut gst::BufferRef,
     ) -> Result<gst::FlowSuccess, gst::FlowError> {
-        let mut bw = outbuf.map_writable().unwrap();
-        let br = inbuf.map_readable().unwrap();
-        bw.copy_from_slice(br.as_slice());
-        gst::trace!(CAT, imp: self, "transform");
+        // copy buffer
+        {
+            let mut bw = outbuf.map_writable().unwrap();
+            let br = inbuf.map_readable().unwrap();
+            bw.copy_from_slice(br.as_slice());
+        }
+
+        // copy metadata
+        // Copy Only metadata, is it write?
+        if let Err(_e) = inbuf.copy_into(outbuf, gst::BufferCopyFlags::TIMESTAMPS, 0, None) {
+            gst::error!(CAT, imp: self, "failed to copy_into");
+            return Err(gst::FlowError::Error);
+        }
+
+        gst::trace!(CAT, imp: self, "transform {}", outbuf.size());
         Ok(gst::FlowSuccess::Ok)
     }
 
