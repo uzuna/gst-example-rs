@@ -1,4 +1,9 @@
+//! BaseTrasformの挙動を確認するためのプラグイン
+
 use gst::glib;
+use gst::glib::ParamFlags;
+use gst::prelude::ParamSpecBuilderExt;
+use gst::prelude::ToValue;
 use gst::subclass::prelude::*;
 use gst_base::subclass::prelude::BaseTransformImpl;
 use once_cell::sync::Lazy;
@@ -13,6 +18,9 @@ static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
         Some("TestTrans Element"),
     )
 });
+
+#[derive(Debug, Clone, Copy)]
+struct Settings {}
 
 #[derive(Default)]
 pub struct TestTrans {}
@@ -73,7 +81,40 @@ impl ElementImpl for TestTrans {
     }
 }
 
-impl ObjectImpl for TestTrans {}
+impl ObjectImpl for TestTrans {
+    // Metadata for the property
+    fn properties() -> &'static [glib::ParamSpec] {
+        static PROPERTIES: Lazy<Vec<glib::ParamSpec>> = Lazy::new(|| {
+            vec![gst::glib::ParamSpecString::builder("copymode")
+                .nick("CopyMode")
+                .blurb("select copy mode")
+                .default_value("buffer-meta")
+                .flags(ParamFlags::READWRITE)
+                .build()]
+        });
+
+        PROPERTIES.as_ref()
+    }
+
+    fn set_property(&self, _id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
+        match pspec.name() {
+            "copymode" => {
+                let x: String = value.get().expect("type checkd upstream");
+                gst::info!(CAT, imp: self, "set prop copymode to {}", x);
+            }
+            _ => unimplemented!(),
+        }
+    }
+
+    // propertiesに含まれるParamSpecについて実装が必要
+    // 実装や対象のpropertyがない場合はinimplementsに到達してgst-inspectがabortする
+    fn property(&self, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+        match pspec.name() {
+            "copymode" => "buffer-meta".to_value(),
+            _ => unimplemented!(),
+        }
+    }
+}
 
 impl GstObjectImpl for TestTrans {}
 

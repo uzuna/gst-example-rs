@@ -1,4 +1,5 @@
 
+ARG:=
 
 .PHONY: build
 build: target/debug/libgstrsexample.so plugin/src
@@ -6,7 +7,7 @@ build: target/debug/libgstrsexample.so plugin/src
 
 .PHONY: inspect
 inspect: build
-	gst-inspect-1.0 --gst-plugin-path=target/debug target/debug/libgstrsexample.so
+	gst-inspect-1.0 --gst-plugin-path=target/debug target/debug/libgstrsexample.so ${ARG}
 
 .PHONY: run.trans
 run.trans: build
