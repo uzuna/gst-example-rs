@@ -1,11 +1,14 @@
 use anyhow::Error;
 use gst::prelude::*;
 
-use crate::VideoTestSrcOpt;
+use crate::{VideoCapsOpt, VideoTestSrcOpt};
 
 /// textoverlayで一定の周期で変化するテキストをかぶせる実装サンプル
 /// テキストはAppSrcを使って生成する
-pub(crate) fn build_appsrc_text_overlay(testsrc: &VideoTestSrcOpt) -> Result<gst::Pipeline, Error> {
+pub(crate) fn build_appsrc_text_overlay(
+    testsrc: &VideoTestSrcOpt,
+    videocaps: &VideoCapsOpt,
+) -> Result<gst::Pipeline, Error> {
     gst::init()?;
 
     let pipeline = gst::Pipeline::default();
@@ -29,7 +32,7 @@ pub(crate) fn build_appsrc_text_overlay(testsrc: &VideoTestSrcOpt) -> Result<gst
     pipeline.add_many(&[&videosrc, &queue, appsrc.upcast_ref(), &textoverlay, &sink])?;
     gst::Element::link_many(&[&textoverlay, &sink])?;
     // textoverlayは先にvideoをlinkする。順序依存性がある
-    videosrc.link(&textoverlay)?;
+    videosrc.link_filtered(&textoverlay, &videocaps.get_caps())?;
     gst::Element::link_many(&[appsrc.upcast_ref(), &queue, &textoverlay])?;
 
     // appsrc関係の処理ブロック
