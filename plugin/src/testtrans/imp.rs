@@ -88,10 +88,10 @@ impl BaseTransformImpl for TestTrans {
     // Bufferの使い方についてヒントを出す
     // InPlace=InBufferを直接書き換えるか否か、両方か
     const MODE: gst_base::subclass::BaseTransformMode = gst_base::subclass::BaseTransformMode::Both;
-    // 同じCapsの場合にパススルーするか
+    // 同じCapsの場合にパススルーするフラグ設定
     // When AlwaysInPlace && true must impl `transform_ip_passthrough`
     const PASSTHROUGH_ON_SAME_CAPS: bool = false;
-    // Inplaceの場合にPassthroughするか
+    // Inplaceの場合にPassthroughするフラグ設定
     // When AlwaysInPlace && PASSTHROUGH_ON_SAME_CAPS == false && true
     // must impl `transform_ip`
     const TRANSFORM_IP_ON_PASSTHROUGH: bool = true;
@@ -115,17 +115,16 @@ impl BaseTransformImpl for TestTrans {
         // MEMORYを指定することでバッファもコピーできるが確保済み領域に追加されるので
         // 事前にoutbuf.remove_all_memoryで全てのメモリを破棄しなければ期待するデータにならない
         // この挙動はcopy_intoの前後でsize()を比較で見ることが出来る
-        if let Err(_e) = inbuf.copy_into(
-            outbuf,
-            gst::BufferCopyFlags::TIMESTAMPS
-                | gst::BufferCopyFlags::META
-                | gst::BufferCopyFlags::DEEP,
-            0,
-            None,
-        ) {
-            gst::error!(CAT, imp: self, "failed to copy_into");
-            return Err(gst::FlowError::Error);
-        }
+        inbuf
+            .copy_into(
+                outbuf,
+                gst::BufferCopyFlags::TIMESTAMPS
+                    | gst::BufferCopyFlags::META
+                    | gst::BufferCopyFlags::DEEP,
+                0,
+                None,
+            )
+            .map_err(|_| gst::FlowError::Error)?;
 
         gst::trace!(CAT, imp: self, "transform");
         Ok(gst::FlowSuccess::Ok)
