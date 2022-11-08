@@ -340,6 +340,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gst-example-plugin"
+version = "0.1.0"
+dependencies = [
+ "gst-plugin-version-helper",
+ "gstreamer",
+ "gstreamer-base",
+ "once_cell",
+]
+
+[[package]]
 name = "gst-example-rs"
 version = "0.1.1"
 dependencies = [
@@ -358,16 +368,6 @@ version = "0.10.0-alpha.1"
 source = "git+https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs#a5f31976513186e2776ece2923ae11faaffe1b0b"
 dependencies = [
  "chrono",
-]
-
-[[package]]
-name = "gst-test-plugin"
-version = "0.1.0"
-dependencies = [
- "gst-plugin-version-helper",
- "gstreamer",
- "gstreamer-base",
- "once_cell",
 ]
 
 [[package]]
