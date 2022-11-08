@@ -1,8 +1,7 @@
 
 
 .PHONY: build
-build: target/debug/libgstrsexample.so
-target/debug/libgstrsexample.so:
+build: target/debug/libgstrsexample.so plugin/src
 	cargo build
 
 .PHONY: inspect

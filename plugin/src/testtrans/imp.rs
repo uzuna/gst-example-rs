@@ -85,14 +85,34 @@ impl ObjectSubclass for TestTrans {
 }
 
 impl BaseTransformImpl for TestTrans {
-    const MODE: gst_base::subclass::BaseTransformMode =
-        gst_base::subclass::BaseTransformMode::AlwaysInPlace;
-    const PASSTHROUGH_ON_SAME_CAPS: bool = true;
+    // Bufferの使い方についてヒントを出す
+    // InPlace=InBufferを直接書き換えるか否か、両方か
+    const MODE: gst_base::subclass::BaseTransformMode = gst_base::subclass::BaseTransformMode::Both;
+    // 同じCapsの場合にパススルーするか
+    // When AlwaysInPlace && true must impl `transform_ip_passthrough`
+    const PASSTHROUGH_ON_SAME_CAPS: bool = false;
+    // Inplaceの場合にPassthroughするか
+    // When AlwaysInPlace && PASSTHROUGH_ON_SAME_CAPS == false && true
+    // must impl `transform_ip`
     const TRANSFORM_IP_ON_PASSTHROUGH: bool = true;
+
+    fn transform(
+        &self,
+        inbuf: &gst::Buffer,
+        outbuf: &mut gst::BufferRef,
+    ) -> Result<gst::FlowSuccess, gst::FlowError> {
+        let mut bw = outbuf.map_writable().unwrap();
+        let br = inbuf.map_readable().unwrap();
+        bw.copy_from_slice(br.as_slice());
+        gst::trace!(CAT, imp: self, "transform");
+        Ok(gst::FlowSuccess::Ok)
+    }
+
     fn transform_ip(&self, _buf: &mut gst::BufferRef) -> Result<gst::FlowSuccess, gst::FlowError> {
         gst::trace!(CAT, imp: self, "transform_ip");
         Ok(gst::FlowSuccess::Ok)
     }
+
     fn transform_ip_passthrough(
         &self,
         _buf: &gst::Buffer,
