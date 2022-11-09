@@ -59,7 +59,7 @@ impl ExampleRsMeta {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ExampleRsMeta, ExampleRsMetaParams, imp::Mode};
+    use crate::{imp::Mode, ExampleRsMeta, ExampleRsMetaParams};
     #[test]
     fn test_write_read() {
         const LABEL: &str = "testlabel";
@@ -70,9 +70,7 @@ mod tests {
         let mut buffer = gst::Buffer::with_size(1024).unwrap();
         {
             let buffer = buffer.make_mut();
-            let params = ExampleRsMetaParams::new(
-                LABEL.to_string(), INDEX, MODE
-            );
+            let params = ExampleRsMetaParams::new(LABEL.to_string(), INDEX, MODE);
             let _meta = ExampleRsMeta::add(buffer, params);
         }
         if let Some(meta) = buffer.meta::<ExampleRsMeta>() {

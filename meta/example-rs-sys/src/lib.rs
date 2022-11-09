@@ -9,7 +9,10 @@ extern "C" {
 
 // Public Rust type for the custom meta.
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct ExampleRsMeta(imp::ExampleRsMeta);
+pub use imp::ExampleRsMetaParams;
+pub use imp::Mode;
 
 // Metas must be Send+Sync.
 unsafe impl Send for ExampleRsMeta {}
@@ -27,10 +30,10 @@ impl ExampleRsMeta {
     // 別のバッファにデータをクローンするメソッド
     pub fn add(
         buffer: &mut gst::BufferRef,
-        refmeta: imp::ExampleRsMetaParams,
+        param: imp::ExampleRsMetaParams,
     ) -> gst::MetaRefMut<Self, gst::meta::Standalone> {
         unsafe {
-            let mut params = std::mem::ManuallyDrop::new(refmeta);
+            let mut params = std::mem::ManuallyDrop::new(param);
             let meta = gst::ffi::gst_buffer_add_meta(
                 buffer.as_mut_ptr(),
                 example_rs_meta_get_info(),
@@ -59,7 +62,10 @@ impl ExampleRsMeta {
 
 #[cfg(test)]
 mod tests {
-    use crate::{imp::{ExampleRsMetaParams, Mode}, ExampleRsMeta};
+    use crate::{
+        imp::{ExampleRsMetaParams, Mode},
+        ExampleRsMeta,
+    };
     #[test]
     fn test_write_read() {
         const LABEL: &str = "testlabel";
@@ -69,12 +75,10 @@ mod tests {
         let mut buffer = gst::Buffer::with_size(1024).unwrap();
         {
             let buffer = buffer.make_mut();
-            let params = ExampleRsMetaParams::new(
-                LABEL.to_string(), INDEX, MODE
-            );
+            let params = ExampleRsMetaParams::new(LABEL.to_string(), INDEX, MODE);
             let _meta = ExampleRsMeta::add(buffer, params);
         }
-        if let Some(meta) = buffer.meta::<ExampleRsMeta>()  {
+        if let Some(meta) = buffer.meta::<ExampleRsMeta>() {
             assert_eq!(meta.label(), LABEL);
             assert_eq!(meta.index(), INDEX);
             assert_eq!(meta.mode(), MODE);

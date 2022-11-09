@@ -26,9 +26,9 @@ pub struct ExampleRsMetaParams {
 }
 
 impl ExampleRsMetaParams {
-    pub fn new(label: String,index: i32, mode: Mode) -> Self{
+    pub fn new(label: String, index: i32, mode: Mode) -> Self {
         Self { label, index, mode }
-    }    
+    }
 }
 
 // This is the C type that is actually stored as meta inside the buffers.
@@ -111,6 +111,15 @@ pub unsafe extern "C" fn example_rs_meta_transform(
     // この例ではシンプルにデータをコピーする
     // メタデータの種類、バッファとのつながりを考慮してコピーや削除をする
     super::ExampleRsMeta::add(gst::BufferRef::from_mut_ptr(dest), meta.clone_params());
+
+    // META APIを排除する?
+    // let dest_buf = gst::BufferRef::from_mut_ptr(dest);
+    // let mut params = std::mem::ManuallyDrop::new(meta.clone_params());
+    // let _meta = gst::ffi::gst_buffer_add_meta(
+    //     dest_buf.as_mut_ptr(),
+    //     example_rs_meta_get_info(),
+    //     &mut *params as *mut ExampleRsMetaParams as gst::glib::ffi::gpointer,
+    // ) as *mut ExampleRsMeta;
 
     true.into_glib()
 }

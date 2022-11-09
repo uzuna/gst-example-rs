@@ -2,6 +2,7 @@
 
 use gst::glib;
 
+mod metatrans;
 mod testtrans;
 
 gst::plugin_define!(
@@ -21,5 +22,6 @@ gst::plugin_define!(
 
 fn plugin_init(plugin: &gst::Plugin) -> Result<(), glib::BoolError> {
     testtrans::register(plugin)?;
+    metatrans::register(plugin)?;
     Ok(())
 }

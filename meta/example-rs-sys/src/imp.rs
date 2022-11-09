@@ -20,12 +20,13 @@ pub struct ExampleRsMetaParams {
 }
 
 impl ExampleRsMetaParams {
-    pub fn new(label: String,index: i32, mode: Mode) -> Self{
+    pub fn new(label: String, index: i32, mode: Mode) -> Self {
         Self { label, index, mode }
-    }    
+    }
 }
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct ExampleRsMeta {
     parent: gst::ffi::GstMeta,
     pub label: String,
