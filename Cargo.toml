@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "gst-example",
-    "plugin"
+    "plugin",
+    "meta/example-rs"
 ]
