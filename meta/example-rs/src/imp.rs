@@ -4,7 +4,8 @@ use std::ptr;
 
 use crate::METAAPINAME;
 
-#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     A,
     B,
@@ -22,6 +23,12 @@ pub struct ExampleRsMetaParams {
     pub label: String,
     pub index: i32,
     pub mode: Mode,
+}
+
+impl ExampleRsMetaParams {
+    pub fn new(label: String,index: i32, mode: Mode) -> Self{
+        Self { label, index, mode }
+    }    
 }
 
 // This is the C type that is actually stored as meta inside the buffers.

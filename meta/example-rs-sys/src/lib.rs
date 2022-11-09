@@ -1,15 +1,15 @@
 use gst::prelude::*;
-
-const METANAME: &[u8] = b"ExampleRsMeta\0";
-const METAAPINAME: &[u8] = b"ExampleRsMetaAPI\0";
-
 mod imp;
+
+#[link(name = "example_rs_meta")]
+extern "C" {
+    pub fn example_rs_meta_get_info() -> *const gst::ffi::GstMetaInfo;
+    pub fn example_rs_meta_api_get_type() -> gst::glib::Type;
+}
 
 // Public Rust type for the custom meta.
 #[repr(transparent)]
 pub struct ExampleRsMeta(imp::ExampleRsMeta);
-pub use imp::ExampleRsMetaParams;
-use imp::Mode;
 
 // Metas must be Send+Sync.
 unsafe impl Send for ExampleRsMeta {}
@@ -19,7 +19,7 @@ unsafe impl MetaAPI for ExampleRsMeta {
     type GstType = imp::ExampleRsMeta;
 
     fn meta_api() -> gst::glib::Type {
-        unsafe { imp::example_rs_meta_api_get_type() }
+        unsafe { example_rs_meta_api_get_type() }
     }
 }
 
@@ -33,7 +33,7 @@ impl ExampleRsMeta {
             let mut params = std::mem::ManuallyDrop::new(refmeta);
             let meta = gst::ffi::gst_buffer_add_meta(
                 buffer.as_mut_ptr(),
-                imp::example_rs_meta_get_info(),
+                example_rs_meta_get_info(),
                 &mut *params as *mut imp::ExampleRsMetaParams as gst::glib::ffi::gpointer,
             ) as *mut imp::ExampleRsMeta;
 
@@ -52,20 +52,19 @@ impl ExampleRsMeta {
     }
 
     #[doc(alias = "get_mode")]
-    pub fn mode(&self) -> Mode {
+    pub fn mode(&self) -> imp::Mode {
         self.0.mode
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{ExampleRsMeta, ExampleRsMetaParams, imp::Mode};
+    use crate::{imp::{ExampleRsMetaParams, Mode}, ExampleRsMeta};
     #[test]
     fn test_write_read() {
         const LABEL: &str = "testlabel";
         const INDEX: i32 = 12345;
         const MODE: Mode = Mode::C;
-
         gst::init().unwrap();
         let mut buffer = gst::Buffer::with_size(1024).unwrap();
         {
@@ -75,7 +74,7 @@ mod tests {
             );
             let _meta = ExampleRsMeta::add(buffer, params);
         }
-        if let Some(meta) = buffer.meta::<ExampleRsMeta>() {
+        if let Some(meta) = buffer.meta::<ExampleRsMeta>()  {
             assert_eq!(meta.label(), LABEL);
             assert_eq!(meta.index(), INDEX);
             assert_eq!(meta.mode(), MODE);
