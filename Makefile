@@ -1,5 +1,6 @@
 
 ARG:=
+COPYMODE:=meta
 
 .PHONY: build
 build: target/debug/libgstrsexample.so plugin/src
@@ -11,7 +12,7 @@ inspect: build
 
 .PHONY: run.trans
 run.trans: build
-	GST_DEBUG=1,testtrans:7 gst-launch-1.0 --gst-plugin-path=target/debug videotestsrc ! testtrans ! autovideosink
+	GST_DEBUG=1,testtrans:7 gst-launch-1.0 --gst-plugin-path=target/debug videotestsrc ! testtrans copymode=${COPYMODE} ! autovideosink
 
 .PHONY: fmt
 fmt:

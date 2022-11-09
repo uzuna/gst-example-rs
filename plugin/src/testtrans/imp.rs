@@ -1,5 +1,7 @@
 //! BaseTrasformの挙動を確認するためのプラグイン
 
+use std::sync::Mutex;
+
 use gst::glib;
 use gst::glib::ParamFlags;
 use gst::prelude::ParamSpecBuilderExt;
@@ -7,6 +9,8 @@ use gst::prelude::ToValue;
 use gst::subclass::prelude::*;
 use gst_base::subclass::prelude::BaseTransformImpl;
 use once_cell::sync::Lazy;
+use std::convert::AsRef;
+use strum::{AsRefStr, EnumString};
 
 use super::CLASS_NAME;
 use super::ELEMENT_NAME;
@@ -19,11 +23,62 @@ static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
     )
 });
 
-#[derive(Debug, Clone, Copy)]
-struct Settings {}
+// BaseTransformerのバッファコピーモード選択
+// コピー方法でメタデータなどが同変化するのかを比較可能にする
+#[derive(AsRefStr, Debug, EnumString, PartialEq, Clone, Copy)]
+#[strum(serialize_all = "lowercase")]
+enum CopyMode {
+    Timestamp,
+    Meta,
+    MetaDeep,
+    Memory,
+    All,
+}
+
+impl Default for CopyMode {
+    fn default() -> Self {
+        CopyMode::Meta
+    }
+}
+
+impl CopyMode {
+    fn buffer_copy_flag(&self) -> gst::BufferCopyFlags {
+        use gst::BufferCopyFlags;
+        match self {
+            CopyMode::Timestamp => BufferCopyFlags::TIMESTAMPS,
+            CopyMode::Meta => BufferCopyFlags::TIMESTAMPS | BufferCopyFlags::META,
+            CopyMode::MetaDeep => {
+                BufferCopyFlags::TIMESTAMPS | BufferCopyFlags::META | BufferCopyFlags::DEEP
+            }
+            CopyMode::Memory => BufferCopyFlags::MEMORY,
+            CopyMode::All => BufferCopyFlags::all(),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct Settings {
+    copy_mode: CopyMode,
+}
+
+impl Settings {
+    const DEFAULT_COPY_MODE: CopyMode = CopyMode::Meta;
+
+    fn set_copy_mode(&mut self, new_mode: &str) -> Result<(), String> {
+        match CopyMode::try_from(new_mode) {
+            Ok(mode) => {
+                self.copy_mode = mode;
+                Ok(())
+            }
+            _ => Err(format!("invalid copy mode {}", new_mode)),
+        }
+    }
+}
 
 #[derive(Default)]
-pub struct TestTrans {}
+pub struct TestTrans {
+    settings: Mutex<Settings>,
+}
 
 impl TestTrans {}
 
@@ -88,7 +143,7 @@ impl ObjectImpl for TestTrans {
             vec![gst::glib::ParamSpecString::builder("copymode")
                 .nick("CopyMode")
                 .blurb("select copy mode")
-                .default_value("buffer-meta")
+                .default_value(Settings::DEFAULT_COPY_MODE.as_ref())
                 .flags(ParamFlags::READWRITE)
                 .build()]
         });
@@ -96,11 +151,14 @@ impl ObjectImpl for TestTrans {
         PROPERTIES.as_ref()
     }
 
+    // gstreamerの起動時プロパティ設定
     fn set_property(&self, _id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
         match pspec.name() {
             "copymode" => {
                 let x: String = value.get().expect("type checkd upstream");
-                gst::info!(CAT, imp: self, "set prop copymode to {}", x);
+                gst::info!(CAT, imp: self, "set prop copymode to {}", &x);
+                let mut settings = self.settings.lock().unwrap();
+                settings.set_copy_mode(&x).expect("set copy mode");
             }
             _ => unimplemented!(),
         }
@@ -110,7 +168,10 @@ impl ObjectImpl for TestTrans {
     // 実装や対象のpropertyがない場合はinimplementsに到達してgst-inspectがabortする
     fn property(&self, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
         match pspec.name() {
-            "copymode" => "buffer-meta".to_value(),
+            "copymode" => {
+                let settings = self.settings.lock().unwrap();
+                settings.copy_mode.as_ref().to_value()
+            }
             _ => unimplemented!(),
         }
     }
@@ -142,11 +203,24 @@ impl BaseTransformImpl for TestTrans {
         inbuf: &gst::Buffer,
         outbuf: &mut gst::BufferRef,
     ) -> Result<gst::FlowSuccess, gst::FlowError> {
-        // バッファを確保済みの領域にコピーをする
-        {
-            let mut bw = outbuf.map_writable().unwrap();
-            let br = inbuf.map_readable().unwrap();
-            bw.copy_from_slice(br.as_slice());
+        let copy_mode = {
+            let settings = self.settings.lock().unwrap();
+            settings.copy_mode
+        };
+
+        use CopyMode::*;
+        match copy_mode {
+            Timestamp | Meta | MetaDeep => {
+                // バッファを確保済みの領域にコピーをする
+                {
+                    let mut bw = outbuf.map_writable().unwrap();
+                    let br = inbuf.map_readable().unwrap();
+                    bw.copy_from_slice(br.as_slice());
+                }
+            }
+            Memory | All => {
+                outbuf.remove_all_memory();
+            }
         }
 
         // copy_intoは基本的にメタデータのコピーに使う
@@ -157,14 +231,7 @@ impl BaseTransformImpl for TestTrans {
         // 事前にoutbuf.remove_all_memoryで全てのメモリを破棄しなければ期待するデータにならない
         // この挙動はcopy_intoの前後でsize()を比較で見ることが出来る
         inbuf
-            .copy_into(
-                outbuf,
-                gst::BufferCopyFlags::TIMESTAMPS
-                    | gst::BufferCopyFlags::META
-                    | gst::BufferCopyFlags::DEEP,
-                0,
-                None,
-            )
+            .copy_into(outbuf, copy_mode.buffer_copy_flag(), 0, None)
             .map_err(|_| gst::FlowError::Error)?;
 
         gst::trace!(CAT, imp: self, "transform");
