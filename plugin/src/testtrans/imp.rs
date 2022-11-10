@@ -1,5 +1,3 @@
-//! BaseTrasformの挙動を確認するためのプラグイン
-
 use std::sync::Mutex;
 
 use gst::glib;
@@ -24,12 +22,13 @@ static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
 });
 
 // BaseTransformerのバッファコピーモード選択
-// コピー方法でメタデータなどが同変化するのかを比較可能にする
+// コピー方法でメタデータなどがどのように変化するのかを比較可能にする
 #[derive(AsRefStr, Debug, EnumString, PartialEq, Clone, Copy)]
 #[strum(serialize_all = "lowercase")]
 enum CopyMode {
     Timestamp,
     Meta,
+    MetaOnly,
     MetaDeep,
     Memory,
     All,
@@ -46,6 +45,7 @@ impl CopyMode {
         use gst::BufferCopyFlags;
         match self {
             CopyMode::Timestamp => BufferCopyFlags::TIMESTAMPS,
+            CopyMode::MetaOnly => BufferCopyFlags::META,
             CopyMode::Meta => BufferCopyFlags::TIMESTAMPS | BufferCopyFlags::META,
             CopyMode::MetaDeep => {
                 BufferCopyFlags::TIMESTAMPS | BufferCopyFlags::META | BufferCopyFlags::DEEP
@@ -210,7 +210,7 @@ impl BaseTransformImpl for TestTrans {
 
         use CopyMode::*;
         match copy_mode {
-            Timestamp | Meta | MetaDeep => {
+            Timestamp | Meta | MetaOnly | MetaDeep => {
                 // バッファを確保済みの領域にコピーをする
                 {
                     let mut bw = outbuf.map_writable().unwrap();
@@ -233,7 +233,6 @@ impl BaseTransformImpl for TestTrans {
         inbuf
             .copy_into(outbuf, copy_mode.buffer_copy_flag(), 0, None)
             .map_err(|_| gst::FlowError::Error)?;
-
         gst::trace!(CAT, imp: self, "transform");
         Ok(gst::FlowSuccess::Ok)
     }

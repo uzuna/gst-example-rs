@@ -14,9 +14,10 @@ license = "MIT"
 [dependencies]
 gst = { package = "gstreamer", git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs", branch = "0.19", version = "0.19.1" }
 gst-base = { package = "gstreamer-base", git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs", branch = "0.19", version = "0.19" }
-
 once_cell = "1.0"
 strum = { version = "0.24.1", features = ["derive"] }
+ers_meta = { package = "example-rs-sys",  path = "../meta/example-rs-sys"}
+parking_lot = "0.12.1"
 
 [build-dependencies]
 gst-plugin-version-helper = {  git = "https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs"}

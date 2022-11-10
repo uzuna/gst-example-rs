@@ -1,5 +1,13 @@
 [workspace]
 members = [
     "gst-example",
-    "plugin"
+    "plugin",
+    "meta/example-rs",
+    "meta/example-rs-sys",
 ]
+
+[profile.release]
+strip = true
+opt-level = "z"
+lto = true
+codegen-units = 1
