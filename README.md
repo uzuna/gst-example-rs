@@ -8,9 +8,8 @@ GstremerをRustで書くサンプル
 |---|---|
 |meta/example-rs|カスタムメタデータ `ExampleRsMeta` のRust実装|
 |meta/example-rs-sys|カスタムメタデータ `ExampleRsMeta` をRustから操作するbinding|
-|plugin/src/testtrans|BaseTransformを使った実装|
-|plugin/src/metatrans|`ExampleRsMeta`の追加、表示、削除を行う実装|
-
+|plugin|Plugin実装。主にBaseTransformを使った実装例|
+|gst-example|gst-launchもしくはGstAppを用いたアプリケーション実装例|
 
 ## References
 
