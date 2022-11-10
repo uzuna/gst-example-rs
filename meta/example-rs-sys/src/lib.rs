@@ -48,6 +48,20 @@ impl ExampleRsMeta {
         }
     }
 
+    pub fn remove(buffer: &mut gst::BufferRef) -> Option<imp::ExampleRsMetaParams> {
+        if let Some(meta) = buffer.meta_mut::<Self>() {
+            let params = imp::ExampleRsMetaParams {
+                label: meta.label().to_string(),
+                index: meta.index(),
+                mode: meta.mode(),
+            };
+            meta.remove().unwrap();
+            Some(params)
+        } else {
+            None
+        }
+    }
+
     #[doc(alias = "get_label")]
     pub fn label(&self) -> &str {
         self.0.label.as_str()
@@ -87,5 +101,10 @@ mod tests {
             assert_eq!(meta.index(), INDEX);
             assert_eq!(meta.mode(), MODE);
         }
+        {
+            let buffer = buffer.make_mut();
+            ExampleRsMeta::remove(buffer).unwrap();
+        }
+        assert!(buffer.meta::<ExampleRsMeta>().is_none());
     }
 }

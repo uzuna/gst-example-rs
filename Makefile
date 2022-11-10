@@ -2,20 +2,28 @@
 ARG:=
 COPYMODE:=meta
 TMETHOD:=copy
-OUT_DIR=target/debug
+TARGET:=
+
+ifeq (${TARGET}, release)
+	BUILD_FLAG=--release
+	OUT_DIR=target/release
+else
+	BUILD_FLAG=
+	OUT_DIR=target/debug
+endif
 
 # build向けのアンカー
 .PHONY: build
 build: ${OUT_DIR}/libgstrsexample.so plugin/src ${OUT_DIR}/libexample_rs_meta.so meta/example-rs/src meta/example-rs-sys/src
-	cargo build
+	cargo build ${BUILD_FLAG}
 
 # メインのプラグインを生成する
 ${OUT_DIR}/libgstrsexample.so: plugin/src/
-	cargo build
+	cargo build ${BUILD_FLAG}
 
 # metadataのSOを生成するのでメインプラグインよりも先に生成する
 ${OUT_DIR}/libexample_rs_meta.so: meta/example-rs/src
-	cd meta && cargo build
+	cd meta/example-rs && cargo build ${BUILD_FLAG}
 
 # pluginの表示
 .PHONY: inspect
@@ -30,7 +38,7 @@ run.trans: build
 # metadataの付与と表示テスト
 .PHONY: run.meta
 run.meta: build
-	LD_LIBRARY_PATH=${OUT_DIR} GST_DEBUG=1,metatrans:7 gst-launch-1.0 --gst-plugin-path=${OUT_DIR} videotestsrc ! video/x-raw,width=600,height=400 ! metatrans op=add tmethod=${TMETHOD} ! videoscale ! video/x-raw,width=300,height=200 ! videoconvert ! testtrans copymode=${COPYMODE} ! metatrans op=show ! autovideosink
+	LD_LIBRARY_PATH=${OUT_DIR} GST_DEBUG=1,metatrans:7 gst-launch-1.0 --gst-plugin-path=${OUT_DIR} videotestsrc ! video/x-raw,width=600,height=400,framerate=300/1 ! metatrans name=orgheiuglefheorgje98rgneitg8iefnwirgeirgnr8ti8ijenfwefoloefneirgkiwjniw7uwlfiheufi8i4r874riuksn op=add tmethod=${TMETHOD} ! videoscale ! video/x-raw,width=300,height=200 ! videoconvert ! testtrans copymode=${COPYMODE} ! metatrans op=show ! metatrans op=remove ! metatrans op=show ! autovideosink
 
 .PHONY: fmt
 fmt:

@@ -57,6 +57,8 @@ enum OperationMode {
     Show,
     // add metadata
     Add,
+    // remove metadata
+    Remove,
 }
 
 impl Default for OperationMode {
@@ -265,6 +267,21 @@ impl BaseTransformImpl for MetaTrans {
                     param.mode,
                 );
                 ers_meta::ExampleRsMeta::add(buffer, param);
+            }
+            OperationMode::Remove => {
+                // TODO 調査
+                // ユニットテストでは削除できているがgst-launchでは削除できていない
+                if let Some(param) = ers_meta::ExampleRsMeta::remove(buffer) {
+                    gst::trace!(
+                        CAT,
+                        imp: self,
+                        "remove meta ({:?}): {} {} {:?}",
+                        buffer.pts(),
+                        param.label,
+                        param.index,
+                        param.mode,
+                    );
+                }
             }
         }
         Ok(gst::FlowSuccess::Ok)
