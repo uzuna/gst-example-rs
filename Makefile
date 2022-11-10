@@ -1,9 +1,11 @@
 
-ARG:=
-COPYMODE:=meta
-TMETHOD:=copy
-TARGET:=
 
+ELEM:=  # inspectで特定のelementを指すための変数
+COPYMODE:=meta  # run.transのコピーモード動作指示
+TMETHOD:=copy  # run.metaのメタデータtransform動作の指示
+TARGET:=  # Rustのビルドターゲット {<empty>(dev), production}
+
+# ビルドフラグとGstreamer実行の参照先の切り替え
 ifeq (${TARGET}, release)
 	BUILD_FLAG=--release
 	OUT_DIR=target/release
@@ -12,7 +14,7 @@ else
 	OUT_DIR=target/debug
 endif
 
-# build向けのアンカー
+# 全体buildのエントリポイント
 .PHONY: build
 build: ${OUT_DIR}/libgstrsexample.so plugin/src ${OUT_DIR}/libexample_rs_meta.so meta/example-rs/src meta/example-rs-sys/src
 	cargo build ${BUILD_FLAG}
@@ -28,7 +30,12 @@ ${OUT_DIR}/libexample_rs_meta.so: meta/example-rs/src
 # pluginの表示
 .PHONY: inspect
 inspect: build
-	LD_LIBRARY_PATH=${OUT_DIR} gst-inspect-1.0 --gst-plugin-path=${OUT_DIR} ${OUT_DIR}/libgstrsexample.so ${ARG}
+	LD_LIBRARY_PATH=${OUT_DIR} gst-inspect-1.0 --gst-plugin-path=${OUT_DIR} ${OUT_DIR}/libgstrsexample.so ${ELEM}
+
+# gstappを起動
+.PHONY: run.app
+run.app: build
+	cargo run
 
 # transformのふるまいを確認
 .PHONY: run.trans
