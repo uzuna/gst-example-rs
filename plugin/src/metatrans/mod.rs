@@ -1,3 +1,5 @@
+//! example-metaを制御するためのエレメント
+
 use gst::glib;
 use gst::prelude::*;
 

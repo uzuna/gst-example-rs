@@ -1,3 +1,8 @@
+//! ExampleRsMeta structs
+//!
+//! ExampleRsMetaと同じ型を定義する
+//! TODO 型定義だけ共有できる方法を考えたい
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransformMode {

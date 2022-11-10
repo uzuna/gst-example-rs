@@ -1,5 +1,3 @@
-//! example-metaを制御するためのクラス
-
 use std::sync::atomic::AtomicI32;
 
 use gst::traits::GstObjectExt;

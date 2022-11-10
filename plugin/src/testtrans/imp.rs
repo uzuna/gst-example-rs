@@ -1,5 +1,3 @@
-//! BaseTrasformの挙動を確認するためのプラグイン
-
 use std::sync::Mutex;
 
 use gst::glib;

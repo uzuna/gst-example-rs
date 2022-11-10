@@ -1,3 +1,7 @@
+//! ExampleRsMeta binding for Rust
+//!
+//! ExampleRsMetaをRustで扱うためのバインディング実装
+
 use gst::prelude::*;
 mod imp;
 

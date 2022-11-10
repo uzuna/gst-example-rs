@@ -1,3 +1,5 @@
+//! BaseTrasformの挙動を確認するためのエレメント
+
 use gst::glib;
 use gst::prelude::*;
 
