@@ -2,14 +2,15 @@
 //!
 //! ExampleCMetaと同じ型を定義する
 
+#[repr(C)]
 #[derive(Debug, Default)]
 pub struct ExampleCMetaParams {
-    pub count: i32,
+    pub count: i64,
     pub num: f32,
 }
 
 impl ExampleCMetaParams {
-    pub fn new(count: i32, num: f32) -> Self {
+    pub fn new(count: i64, num: f32) -> Self {
         Self { count, num }
     }
 }
@@ -18,6 +19,6 @@ impl ExampleCMetaParams {
 #[derive(Debug)]
 pub struct ExampleCMeta {
     parent: gst::ffi::GstMeta,
-    pub count: i32,
+    pub count: i64,
     pub num: f32,
 }

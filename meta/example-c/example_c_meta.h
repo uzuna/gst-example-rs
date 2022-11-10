@@ -6,11 +6,17 @@
 G_BEGIN_DECLS
 
 typedef struct _ExampleCMeta ExampleCMeta;
+typedef struct _ExampleCMetaParam ExampleCMetaParam;
 
 struct _ExampleCMeta {
     GstMeta meta;
 
-    guint64 count;
+    gint64 count;
+    gfloat num;
+};
+
+struct _ExampleCMetaParam {
+    gint64 count;
     gfloat num;
 };
 
@@ -23,7 +29,10 @@ const GstMetaInfo * example_c_meta_get_info (void);
 #define EXAMPLE_C_META_INFO (example_c_meta_get_info())
 
 // utility function
-ExampleCMeta * gst_buffer_add_example_c_meta (GstBuffer * buffer, guint64 count, gfloat num);
+ExampleCMeta * buffer_add_example_c_meta (GstBuffer * buffer, gint64 count, gfloat num);
+
+// utility function
+ExampleCMeta * buffer_add_param_example_c_meta (GstBuffer * buffer, ExampleCMetaParam *param);
 
 G_END_DECLS
 

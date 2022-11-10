@@ -19,14 +19,16 @@ GType example_c_meta_api_get_type(void)
 
 /*
 Metaデータの初期化関数
+必ず初期値が渡されることとする
 */
 gboolean
 gst_example_c_meta_init(GstMeta *meta, gpointer params, GstBuffer *buffer)
 {
     _ExampleCMeta *dmeta = (_ExampleCMeta *)meta;
+    _ExampleCMetaParam *dparams = (_ExampleCMetaParam *)params;
 
-    dmeta->count = 0;
-    dmeta->num = 0.0;
+    dmeta->count = dparams->count;
+    dmeta->num = dparams->num;
     return TRUE;
 }
 
@@ -50,14 +52,10 @@ gst_example_c_meta_transform(GstBuffer *dest, GstMeta *meta,
 
     if (GST_META_TRANSFORM_IS_COPY(type))
     {
-        dmeta = (_ExampleCMeta *)gst_buffer_add_meta(dest,
-                                                     EXAMPLE_C_META_INFO, NULL);
-
+        dmeta = (_ExampleCMeta *)buffer_add_example_c_meta(dest,
+                                                           smeta->count, smeta->num);
         if (!dmeta)
             return FALSE;
-
-        dmeta->count = smeta->count;
-        dmeta->num = smeta->num;
     }
     else
     {
@@ -90,17 +88,28 @@ example_c_meta_get_info(void)
     return meta_info;
 }
 
+// 複数の値を分けて入力したい場合
 _ExampleCMeta *
-buffer_add_example_c_meta(GstBuffer *buffer, guint64 count, gfloat num)
+buffer_add_example_c_meta(GstBuffer *buffer, gint64 count, gfloat num)
+{
+    _ExampleCMeta *meta;
+    _ExampleCMetaParam param = {count, num};
+
+    g_return_val_if_fail(GST_IS_BUFFER(buffer), NULL);
+    meta = (_ExampleCMeta *)gst_buffer_add_meta(buffer,
+                                                EXAMPLE_C_META_INFO, &param);
+    return meta;
+}
+
+// 構造体で渡したい場合
+_ExampleCMeta *
+buffer_add_param_example_c_meta(GstBuffer *buffer, _ExampleCMetaParam *param)
 {
     _ExampleCMeta *meta;
 
     g_return_val_if_fail(GST_IS_BUFFER(buffer), NULL);
-
     meta = (_ExampleCMeta *)gst_buffer_add_meta(buffer,
-                                                EXAMPLE_C_META_INFO, NULL);
+                                                EXAMPLE_C_META_INFO, param);
 
-    meta->count = count;
-    meta->num = num;
     return meta;
 }

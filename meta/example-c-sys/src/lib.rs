@@ -2,13 +2,23 @@
 //!
 //! ExampleCMetaをRustで扱うためのバインディング実装
 
-use gst::prelude::*;
+use gst::{ffi::GstBuffer, prelude::*};
 mod imp;
 
 #[link(name = "example_c_meta")]
 extern "C" {
     pub fn example_c_meta_get_info() -> *const gst::ffi::GstMetaInfo;
     pub fn example_c_meta_api_get_type() -> gst::glib::Type;
+    pub fn buffer_add_example_c_meta(
+        buffer: *mut GstBuffer,
+        count: i64,
+        num: f32,
+    ) -> *mut imp::ExampleCMeta;
+    //
+    pub fn buffer_add_param_example_c_meta(
+        buffer: *mut GstBuffer,
+        param: &ExampleCMetaParams,
+    ) -> *mut imp::ExampleCMeta;
 }
 
 // Public Rust type for the custom meta.
@@ -36,18 +46,27 @@ impl ExampleCMeta {
         param: imp::ExampleCMetaParams,
     ) -> gst::MetaRefMut<Self, gst::meta::Standalone> {
         unsafe {
-            let meta = gst::ffi::gst_buffer_add_meta(
-                buffer.as_mut_ptr(),
-                example_c_meta_get_info(),
-                std::ptr::null::<std::os::raw::c_char>() as gst::glib::ffi::gpointer,
-            ) as *mut imp::ExampleCMeta;
+            // OK
+            // direct call gst_buffer_add_meta
+            // use null param and write fields
+            // let mut params = std::mem::ManuallyDrop::new(param);
+            // let meta = gst::ffi::gst_buffer_add_meta(
+            //     buffer.as_mut_ptr(),
+            //     example_c_meta_get_info(),
+            //     &mut *params as *mut ExampleCMetaParams as gst::glib::ffi::gpointer ,
+            // ) as *mut imp::ExampleCMeta;
 
-            // TODO Find out why failed to set by params
-            {
-                let meta = meta.as_mut().unwrap();
-                meta.count = param.count;
-                meta.num = param.num;
-            }
+            // OK
+            // use separated funcion
+            // let meta = buffer_add_example_c_meta(
+            //     buffer.as_mut_ptr(),
+            //     param.count,
+            //     param.num
+            // );
+
+            // OK
+            // use struct param and ewassing in C++
+            let meta = buffer_add_param_example_c_meta(buffer.as_mut_ptr(), &param);
 
             Self::from_mut_ptr(buffer, meta)
         }
@@ -67,7 +86,7 @@ impl ExampleCMeta {
     }
 
     #[doc(alias = "get_count")]
-    pub fn count(&self) -> i32 {
+    pub fn count(&self) -> i64 {
         self.0.count
     }
 
@@ -79,13 +98,10 @@ impl ExampleCMeta {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        imp::ExampleCMetaParams,
-        ExampleCMeta,
-    };
+    use crate::{imp::ExampleCMetaParams, ExampleCMeta};
     #[test]
     fn test_write_read() {
-        const COUNT: i32 = 12345;
+        const COUNT: i64 = 12345;
         const NUM: f32 = 1.2345;
         gst::init().unwrap();
         let mut buffer = gst::Buffer::with_size(1024).unwrap();
