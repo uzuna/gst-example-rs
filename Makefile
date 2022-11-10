@@ -16,7 +16,7 @@ endif
 
 # 全体buildのエントリポイント
 .PHONY: build
-build: ${OUT_DIR}/libgstrsexample.so plugin/src ${OUT_DIR}/libexample_rs_meta.so meta/example-rs/src meta/example-rs-sys/src
+build: ${OUT_DIR}/libgstrsexample.so plugin/src ${OUT_DIR}/libexample_rs_meta.so meta/example-rs/src
 	cargo build ${BUILD_FLAG}
 
 # メインのプラグインを生成する

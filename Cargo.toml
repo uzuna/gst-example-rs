@@ -2,6 +2,7 @@
 members = [
     "gst-example",
     "plugin",
+    "meta/example-c-sys",
     "meta/example-rs",
     "meta/example-rs-sys",
 ]
