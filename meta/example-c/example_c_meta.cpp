@@ -19,7 +19,7 @@ GType example_c_meta_api_get_type(void)
 
 /*
 Metaデータの初期化関数
-必ず初期値が渡されることとする
+gpointer paramsはgst_buffer_add_metaで渡されるポインタ
 */
 gboolean
 gst_example_c_meta_init(GstMeta *meta, gpointer params, GstBuffer *buffer)
@@ -27,6 +27,7 @@ gst_example_c_meta_init(GstMeta *meta, gpointer params, GstBuffer *buffer)
     _ExampleCMeta *dmeta = (_ExampleCMeta *)meta;
     _ExampleCMetaParam *dparams = (_ExampleCMetaParam *)params;
 
+    dmeta->label = dparams->label;
     dmeta->count = dparams->count;
     dmeta->num = dparams->num;
     return TRUE;
@@ -38,6 +39,14 @@ Heap領域を使う情報の場合はここで開放をする
 */
 void gst_example_c_meta_free(GstMeta *meta, GstBuffer *buffer)
 {
+    _ExampleCMeta *smeta;
+    smeta = (_ExampleCMeta *)meta;
+
+    // FIXME double free or corruption (out)になる
+    // 到達前に開放されているが誰が開放しているのかわからない
+    if ((&smeta->label)->str) {
+        g_free(&smeta->label);
+    }
 }
 
 /*
@@ -53,7 +62,7 @@ gst_example_c_meta_transform(GstBuffer *dest, GstMeta *meta,
     if (GST_META_TRANSFORM_IS_COPY(type))
     {
         dmeta = (_ExampleCMeta *)buffer_add_example_c_meta(dest,
-                                                           smeta->count, smeta->num);
+                                                           smeta->label, smeta->count, smeta->num);
         if (!dmeta)
             return FALSE;
     }
@@ -90,10 +99,10 @@ example_c_meta_get_info(void)
 
 // 複数の値を分けて入力したい場合
 _ExampleCMeta *
-buffer_add_example_c_meta(GstBuffer *buffer, gint64 count, gfloat num)
+buffer_add_example_c_meta(GstBuffer *buffer, GString label, gint64 count, gfloat num)
 {
     _ExampleCMeta *meta;
-    _ExampleCMetaParam param = {count, num};
+    _ExampleCMetaParam param = {label, count, num};
 
     g_return_val_if_fail(GST_IS_BUFFER(buffer), NULL);
     meta = (_ExampleCMeta *)gst_buffer_add_meta(buffer,
@@ -107,9 +116,14 @@ buffer_add_param_example_c_meta(GstBuffer *buffer, _ExampleCMetaParam *param)
 {
     _ExampleCMeta *meta;
 
+    // TOOD: gst_example_c_meta_free douple freeの原因が分かったら
+    // デバッグプリントを削除する
+    // g_print("c sizeof %ld\n", sizeof(_ExampleCMetaParam));
+    // g_print("c pointer %p\n", param);
+    // g_print("c pointer label %p\n", &param->label);
+
     g_return_val_if_fail(GST_IS_BUFFER(buffer), NULL);
     meta = (_ExampleCMeta *)gst_buffer_add_meta(buffer,
                                                 EXAMPLE_C_META_INFO, param);
-
     return meta;
 }

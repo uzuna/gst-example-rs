@@ -9,15 +9,16 @@ mod imp;
 extern "C" {
     pub fn example_c_meta_get_info() -> *const gst::ffi::GstMetaInfo;
     pub fn example_c_meta_api_get_type() -> gst::glib::Type;
+    #[allow(improper_ctypes)]
     pub fn buffer_add_example_c_meta(
         buffer: *mut GstBuffer,
         count: i64,
         num: f32,
     ) -> *mut imp::ExampleCMeta;
-    //
+    #[allow(improper_ctypes)]
     pub fn buffer_add_param_example_c_meta(
         buffer: *mut GstBuffer,
-        param: &ExampleCMetaParams,
+        param: *mut ExampleCMetaParams,
     ) -> *mut imp::ExampleCMeta;
 }
 
@@ -47,8 +48,7 @@ impl ExampleCMeta {
     ) -> gst::MetaRefMut<Self, gst::meta::Standalone> {
         unsafe {
             // OK
-            // direct call gst_buffer_add_meta
-            // use null param and write fields
+            // 直接gst_buffer_add_metaを呼ぶ
             // let mut params = std::mem::ManuallyDrop::new(param);
             // let meta = gst::ffi::gst_buffer_add_meta(
             //     buffer.as_mut_ptr(),
@@ -57,32 +57,31 @@ impl ExampleCMeta {
             // ) as *mut imp::ExampleCMeta;
 
             // OK
-            // use separated funcion
-            // let meta = buffer_add_example_c_meta(
-            //     buffer.as_mut_ptr(),
-            //     param.count,
-            //     param.num
+            // 定義した関数に参照渡しで更新を指示する
+            // Heapにあるデータの場合は明示的にManuallyDropが必要
+            // println!(
+            //     "rust size of {}",
+            //     std::mem::size_of::<imp::ExampleCMetaParams>()
             // );
-
-            // OK
-            // use struct param and ewassing in C++
-            let meta = buffer_add_param_example_c_meta(buffer.as_mut_ptr(), &param);
+            let mut params = std::mem::ManuallyDrop::new(param);
+            let meta = buffer_add_param_example_c_meta(
+                buffer.as_mut_ptr(),
+                &mut *params as *mut ExampleCMetaParams,
+            );
 
             Self::from_mut_ptr(buffer, meta)
         }
     }
 
-    pub fn remove(buffer: &mut gst::BufferRef) -> Option<imp::ExampleCMetaParams> {
+    pub fn remove(buffer: &mut gst::BufferRef) {
         if let Some(meta) = buffer.meta_mut::<Self>() {
-            let params = imp::ExampleCMetaParams {
-                count: meta.count(),
-                num: meta.num(),
-            };
             meta.remove().unwrap();
-            Some(params)
-        } else {
-            None
         }
+    }
+
+    #[doc(alias = "get_label")]
+    pub fn label(&self) -> &gst::glib::GStr {
+        self.0.label.as_gstr()
     }
 
     #[doc(alias = "get_count")]
@@ -98,25 +97,34 @@ impl ExampleCMeta {
 
 #[cfg(test)]
 mod tests {
+
     use crate::{imp::ExampleCMetaParams, ExampleCMeta};
     #[test]
     fn test_write_read() {
+        const LABEL: &str = "hello";
         const COUNT: i64 = 12345;
         const NUM: f32 = 1.2345;
         gst::init().unwrap();
         let mut buffer = gst::Buffer::with_size(1024).unwrap();
         {
             let buffer = buffer.make_mut();
-            let params = ExampleCMetaParams::new(COUNT, NUM);
+            let params = ExampleCMetaParams::new(LABEL.to_owned(), COUNT, NUM);
             let _meta = ExampleCMeta::add(buffer, params);
         }
         if let Some(meta) = buffer.meta::<ExampleCMeta>() {
+            assert_eq!(meta.label().as_str(), LABEL);
+            assert_eq!(meta.count(), COUNT);
+            assert_eq!(meta.num(), NUM);
+        }
+        // TODO remove after resolve double free
+        if let Some(meta) = buffer.meta::<ExampleCMeta>() {
+            assert_eq!(meta.label().as_str(), LABEL);
             assert_eq!(meta.count(), COUNT);
             assert_eq!(meta.num(), NUM);
         }
         {
             let buffer = buffer.make_mut();
-            ExampleCMeta::remove(buffer).unwrap();
+            ExampleCMeta::remove(buffer);
         }
         assert!(buffer.meta::<ExampleCMeta>().is_none());
     }
