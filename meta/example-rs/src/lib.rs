@@ -9,7 +9,7 @@ mod imp;
 #[repr(transparent)]
 pub struct ExampleRsMeta(imp::ExampleRsMeta);
 pub use imp::ExampleRsMetaParams;
-use imp::Mode;
+use imp::TransformMode;
 
 // Metas must be Send+Sync.
 unsafe impl Send for ExampleRsMeta {}
@@ -52,19 +52,19 @@ impl ExampleRsMeta {
     }
 
     #[doc(alias = "get_mode")]
-    pub fn mode(&self) -> Mode {
+    pub fn mode(&self) -> TransformMode {
         self.0.mode
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{imp::Mode, ExampleRsMeta, ExampleRsMetaParams};
+    use crate::{imp::TransformMode, ExampleRsMeta, ExampleRsMetaParams};
     #[test]
     fn test_write_read() {
         const LABEL: &str = "testlabel";
         const INDEX: i32 = 12345;
-        const MODE: Mode = Mode::C;
+        const MODE: TransformMode = TransformMode::Ignore;
 
         gst::init().unwrap();
         let mut buffer = gst::Buffer::with_size(1024).unwrap();

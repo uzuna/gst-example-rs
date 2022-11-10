@@ -6,15 +6,14 @@ use crate::METAAPINAME;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mode {
-    A,
-    B,
-    C,
+pub enum TransformMode {
+    Ignore,
+    Copy,
 }
 
-impl Default for Mode {
+impl Default for TransformMode {
     fn default() -> Self {
-        Self::A
+        Self::Ignore
     }
 }
 
@@ -22,11 +21,11 @@ impl Default for Mode {
 pub struct ExampleRsMetaParams {
     pub label: String,
     pub index: i32,
-    pub mode: Mode,
+    pub mode: TransformMode,
 }
 
 impl ExampleRsMetaParams {
-    pub fn new(label: String, index: i32, mode: Mode) -> Self {
+    pub fn new(label: String, index: i32, mode: TransformMode) -> Self {
         Self { label, index, mode }
     }
 }
@@ -37,7 +36,7 @@ pub struct ExampleRsMeta {
     parent: gst::ffi::GstMeta,
     pub label: String,
     pub index: i32,
-    pub mode: Mode,
+    pub mode: TransformMode,
 }
 
 impl ExampleRsMeta {
@@ -108,9 +107,14 @@ pub unsafe extern "C" fn example_rs_meta_transform(
 ) -> gst::glib::ffi::gboolean {
     let meta = &*(meta as *mut ExampleRsMeta);
 
-    // この例ではシンプルにデータをコピーする
-    // メタデータの種類、バッファとのつながりを考慮してコピーや削除をする
-    super::ExampleRsMeta::add(gst::BufferRef::from_mut_ptr(dest), meta.clone_params());
+    match meta.mode {
+        TransformMode::Ignore => {}
+        TransformMode::Copy => {
+            // この例ではシンプルにデータをコピーする
+            // メタデータの種類、バッファとのつながりを考慮してコピーや削除をする
+            super::ExampleRsMeta::add(gst::BufferRef::from_mut_ptr(dest), meta.clone_params());
+        }
+    }
 
     // META APIを排除する?
     // let dest_buf = gst::BufferRef::from_mut_ptr(dest);
@@ -120,7 +124,6 @@ pub unsafe extern "C" fn example_rs_meta_transform(
     //     example_rs_meta_get_info(),
     //     &mut *params as *mut ExampleRsMetaParams as gst::glib::ffi::gpointer,
     // ) as *mut ExampleRsMeta;
-
     true.into_glib()
 }
 

@@ -12,7 +12,7 @@ extern "C" {
 #[derive(Debug)]
 pub struct ExampleRsMeta(imp::ExampleRsMeta);
 pub use imp::ExampleRsMetaParams;
-pub use imp::Mode;
+pub use imp::TransformMode;
 
 // Metas must be Send+Sync.
 unsafe impl Send for ExampleRsMeta {}
@@ -55,7 +55,7 @@ impl ExampleRsMeta {
     }
 
     #[doc(alias = "get_mode")]
-    pub fn mode(&self) -> imp::Mode {
+    pub fn mode(&self) -> imp::TransformMode {
         self.0.mode
     }
 }
@@ -63,14 +63,14 @@ impl ExampleRsMeta {
 #[cfg(test)]
 mod tests {
     use crate::{
-        imp::{ExampleRsMetaParams, Mode},
+        imp::{ExampleRsMetaParams, TransformMode},
         ExampleRsMeta,
     };
     #[test]
     fn test_write_read() {
         const LABEL: &str = "testlabel";
         const INDEX: i32 = 12345;
-        const MODE: Mode = Mode::C;
+        const MODE: TransformMode = TransformMode::Ignore;
         gst::init().unwrap();
         let mut buffer = gst::Buffer::with_size(1024).unwrap();
         {
