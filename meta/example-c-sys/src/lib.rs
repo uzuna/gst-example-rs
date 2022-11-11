@@ -9,6 +9,9 @@ mod imp;
 extern "C" {
     pub fn example_c_meta_get_info() -> *const gst::ffi::GstMetaInfo;
     pub fn example_c_meta_api_get_type() -> gst::glib::Type;
+    // TODO GStringがFFIsafeでないというエラーが出ているので対応を考える
+    // RSでもstring実装であり、C実装で型sizeを合わせるために所有権のある型にしている
+    // しかしdouble freeが出てしまうので参照にしたほうがいいかも知れない
     #[allow(improper_ctypes)]
     pub fn buffer_add_example_c_meta(
         buffer: *mut GstBuffer,
