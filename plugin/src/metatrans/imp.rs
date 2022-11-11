@@ -68,10 +68,13 @@ impl Default for OperationMode {
     }
 }
 
+/// 使うメタデータの種類を切り替える
 #[derive(AsRefStr, Debug, EnumString, PartialEq, Clone, Copy)]
 #[strum(serialize_all = "lowercase")]
 enum MetaType {
+    // Rust実装
     Rs,
+    // C実装
     C,
 }
 
