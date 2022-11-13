@@ -1,6 +1,6 @@
 include ../../common.mk
 
-SO_NAME := libexample_c_meta.so
+SO_NAME:=libexample_c_meta.so
 RUST_TEST_DEPS_OUT_DIR:=${OUT_DIR}/deps
 
 CC := g++
