@@ -1,7 +1,7 @@
 version: 2.1
 executors:
   default:
-    working_directory: /repo
+    working_directory: ~/repo
     docker:
       - image: circleci/rust:latest
 
