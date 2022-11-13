@@ -16,12 +16,12 @@ endif
 
 # 全体buildのエントリポイント
 .PHONY: build
-build: ${OUT_DIR}/libgstrsexample.so plugin/src ${OUT_DIR}/libexample_rs_meta.so meta/example-rs/src ${OUT_DIR}/libexample_c_meta.so
+build: ${OUT_DIR}/libgstrsexample.so
 	cargo build ${BUILD_FLAG}
 
 # メインのプラグインを生成する
-${OUT_DIR}/libgstrsexample.so: plugin/src/
-	cargo build ${BUILD_FLAG}
+${OUT_DIR}/libgstrsexample.so: plugin/src/ ${OUT_DIR}/libexample_rs_meta.so ${OUT_DIR}/libexample_c_meta.so
+	cd plugin && cargo build ${BUILD_FLAG}
 
 # metadataのSOを生成するのでメインプラグインよりも先に生成する
 ${OUT_DIR}/libexample_rs_meta.so: meta/example-rs/src

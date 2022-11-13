@@ -21,7 +21,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: rustup toolchain install stable --profile minimal
       - name: build
-        run: cargo build
+        run: make build
   fmt:
     runs-on: ubuntu-latest
     needs: build_cache
