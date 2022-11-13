@@ -8,6 +8,8 @@ executors:
 jobs:
   build-and-test:
     executor: default
+    environment:
+      RUST_VERSION: 1.65
     steps:
       - checkout
       - run:
