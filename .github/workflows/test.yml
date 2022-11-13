@@ -27,6 +27,8 @@ jobs:
           version: 1.0
       - run: rustup toolchain install stable --profile minimal
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: "build"
       - name: build
         run: make build
       - name: check format
