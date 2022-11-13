@@ -8,7 +8,7 @@ on:
       - meta
       - plugin
   pull_request:
-    types: ["opened"]
+    types: ["opened", "synchronize"]
 jobs:
   build_cache:
     runs-on: ubuntu-latest
