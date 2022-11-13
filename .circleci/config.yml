@@ -1,0 +1,65 @@
+version: 2.1
+orbs:
+  git-shallow-clone: guitarrapc/git-shallow-clone@2.0.3
+
+executors:
+  default:
+    working_directory: /repo
+    docker:
+      - image: circleci/rust:latest
+
+jobs:
+  build-and-test:
+    executor: default
+    steps:
+      - git-shallow-clone/checkout:
+          fetch_depth: 1
+      - run:
+          name: install dependencies
+          command: |
+            apt update
+            apt install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - record_build_env
+      - restore_cache_
+      - run:
+          name: build
+          command: make build
+      - run:
+          name: lint
+          command: |
+            cargo fmt --all -- --check
+            cargo clippy --all-targets --all-features -- -D warnings
+      - run:
+          name: test
+          command: |
+            cargo test --all -- --nocapture
+      - save_cache_
+
+commands:
+  # reference from: https://laysakura.github.io/2020/03/06/rust-circle-ci/
+  record_build_env:
+    steps:
+      - run:
+          name: Record build environment to use as cache key
+          command: |
+            echo $OS_VERSION | tee /tmp/build-env
+            rustc --version | tee /tmp/build-env
+  save_cache_:
+    steps:
+      - save_cache:
+          key: cache-cargo-target-{{ .Environment.CIRCLECI_CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/build-env" }}-{{ checksum "Cargo.lock" }}
+          paths:
+            - ~/.cargo
+            - target
+  restore_cache_:
+    steps:
+      - restore_cache:
+          keys:
+            - cache-cargo-target-{{ .Environment.CIRCLECI_CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/build-env" }}-{{ checksum "Cargo.lock" }}
+            - cache-cargo-target-{{ .Environment.CIRCLECI_CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/build-env" }}
+
+workflows:
+  version: 2
+  build-and-test:
+    jobs:
+      - build-and-test
