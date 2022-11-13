@@ -3,6 +3,9 @@ executors:
   default:
     working_directory: ~/repo
     docker:
+      # cimg/rust:1.65.0はUbuntu22.04ベース
+      # example-cのビルドでgstreamer1.16を使いたいのでbaseを使う
+      # 原因が特定できたら22.04に上げる
       - image: cimg/base:current-20.04
 
 jobs:
