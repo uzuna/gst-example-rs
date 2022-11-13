@@ -18,8 +18,11 @@ jobs:
             curl -O https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init && \
             chmod +x rustup-init && \
             ./rustup-init -y --no-modify-path --default-toolchain $RUST_VERSION && \
-            rm rustup-init
-            rustup component add rustfmt
+            rm ./rustup-init
+      - run:
+          name: setup cargo
+          command: |
+            rustup component add rustfmt clippy
       - run:
           name: install dependencies
           command: |
