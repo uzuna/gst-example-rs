@@ -3,7 +3,7 @@ executors:
   default:
     working_directory: ~/repo
     docker:
-      - image: cimg/base-current-20.04
+      - image: cimg/base:current-20.04
 
 jobs:
   build-and-test:
