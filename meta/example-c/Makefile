@@ -1,5 +1,6 @@
+include ../../common.mk
+
 SO_NAME := libexample_c_meta.so
-OUT_DIR:=../../target/debug
 RUST_TEST_DEPS_OUT_DIR:=${OUT_DIR}/deps
 
 CC := g++
@@ -21,7 +22,7 @@ PKGS := gstreamer-1.0 \
 
 OBJS := $(SRCS:.cpp=.o)
 
-CFLAGS += -fPIC
+CFLAGS += -fPIC -O3
 
 CFLAGS += `pkg-config --cflags $(PKGS)`
 
