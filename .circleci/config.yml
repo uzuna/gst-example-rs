@@ -9,13 +9,12 @@ jobs:
   build-and-test:
     executor: default
     environment:
-      PATH: /home/circleci/.cargo/bin:$PATH
       RUST_VERSION: 1.65
     steps:
       - run:
           name: setup environment
           command: |
-            echo 'export PATH="/home/circleci/.cargo/bin:"$PATH"'
+            export PATH=/home/circleci/.cargo/bin:$PATH
       - checkout
       - run:
           name: install cargo
