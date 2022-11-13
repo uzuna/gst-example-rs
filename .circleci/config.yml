@@ -3,7 +3,7 @@ executors:
   default:
     working_directory: ~/repo
     docker:
-      - image: circleci/rust:latest
+      - image: cimg/rust:latest-stretch
 
 jobs:
   build-and-test:
@@ -13,8 +13,8 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            apt update
-            apt install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+            sudo apt update
+            sudo apt install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
       - record_build_env
       - restore_cache_
       - run:
