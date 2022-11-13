@@ -1,0 +1,81 @@
+version: 2.1
+executors:
+  default:
+    working_directory: ~/repo
+    docker:
+      # cimg/rust:1.65.0はUbuntu22.04ベース
+      # example-cのビルドでgstreamer1.16を使いたいのでbaseを使う
+      # 原因が特定できたら22.04に上げる
+      - image: cimg/base:current-20.04
+
+jobs:
+  build-and-test:
+    executor: default
+    environment:
+      RUST_VERSION: 1.65
+    steps:
+      - checkout
+      - run:
+          name: install cargo
+          command: |
+            export PATH=/home/circleci/.cargo/bin:$PATH
+            curl -O https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init && \
+            chmod +x rustup-init && \
+            ./rustup-init -y --no-modify-path --default-toolchain $RUST_VERSION && \
+            rm ./rustup-init
+            rustup component add rustfmt clippy
+      - run:
+          name: install dependencies
+          command: |
+            sudo apt update
+            sudo apt install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - record_build_env
+      - restore_cache_
+      - run:
+          name: build
+          command: |        
+            export PATH=/home/circleci/.cargo/bin:$PATH
+            make build
+      - run:
+          name: lint
+          command: |
+            export PATH=/home/circleci/.cargo/bin:$PATH
+            cargo fmt --all -- --check
+            cargo clippy --all-targets --all-features -- -D warnings
+      - run:
+          name: test
+          command: |
+            export PATH=/home/circleci/.cargo/bin:$PATH
+            cargo test --all -- --nocapture
+      - save_cache_
+
+commands:
+  # reference from: https://laysakura.github.io/2020/03/06/rust-circle-ci/
+  record_build_env:
+    steps:
+      - run:
+          name: Record build environment to use as cache key
+          command: |
+            export PATH=/home/circleci/.cargo/bin:$PATH
+            echo $OS_VERSION | tee /tmp/build-env
+            rustc --version | tee /tmp/build-env
+  save_cache_:
+    steps:
+      - save_cache:
+          key: cache-cargo-target-{{ .Environment.CIRCLECI_CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/build-env" }}-{{ checksum "Cargo.lock" }}
+          paths:
+            - ~/.cargo/registry
+            - ~/.cargo/git
+            - target
+  restore_cache_:
+    steps:
+      - restore_cache:
+          keys:
+            - cache-cargo-target-{{ .Environment.CIRCLECI_CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/build-env" }}-{{ checksum "Cargo.lock" }}
+            - cache-cargo-target-{{ .Environment.CIRCLECI_CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/build-env" }}
+
+workflows:
+  version: 2
+  build-and-test:
+    jobs:
+      - build-and-test

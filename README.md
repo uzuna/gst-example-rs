@@ -1,5 +1,8 @@
 # gst-example-rs
 
+![build & test](https://github.com/github/docs/actions/workflows/main.yml/badge.svg)
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/uzuna/gst-example-rs/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/uzuna/gst-example-rs/tree/master)
+
 GstremerをRustで書くサンプル
 
 ## crate
