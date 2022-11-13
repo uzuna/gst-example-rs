@@ -211,6 +211,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "example-c-sys"
+version = "0.1.0"
+dependencies = [
+ "gstreamer",
+]
+
+[[package]]
 name = "example-rs-meta"
 version = "0.1.0"
 dependencies = [
@@ -358,6 +365,7 @@ dependencies = [
 name = "gst-example-plugin"
 version = "0.1.0"
 dependencies = [
+ "example-c-sys",
  "example-rs-sys",
  "gst-plugin-version-helper",
  "gstreamer",

@@ -1,21 +1,15 @@
 [package]
-name = "example-rs-meta"
+name = "example-c-sys"
 version = "0.1.0"
 edition = "2021"
-description = "example Rust shared object for gst metadata"
+description = "example C shared object for gst metadata"
 authors = ["FUJINAKA Fumiya <uzuna.kf@gmail.com>"]
 rust-version = "1.65"
 repository = "https://github.com/uzuna/gst-example-rs"
 license = "MIT OR Apache-2.0"
-publish = false
+publish = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 gst = { package = "gstreamer", git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs", branch = "0.19", version = "0.19.1" }
-once_cell = "1.16.0"
-
-[lib]
-name = "example_rs_meta"
-crate-type = ["cdylib"]
-path = "src/lib.rs"

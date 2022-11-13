@@ -1,5 +1,6 @@
 use std::sync::atomic::AtomicI32;
 
+use ec_meta::{ExampleCMeta, ExampleCMetaParams};
 use gst::traits::GstObjectExt;
 use parking_lot::RwLock;
 
@@ -67,10 +68,27 @@ impl Default for OperationMode {
     }
 }
 
+/// 使うメタデータの種類を切り替える
+#[derive(AsRefStr, Debug, EnumString, PartialEq, Clone, Copy)]
+#[strum(serialize_all = "lowercase")]
+enum MetaType {
+    // Rust実装
+    Rs,
+    // C実装
+    C,
+}
+
+impl Default for MetaType {
+    fn default() -> Self {
+        Self::Rs
+    }
+}
+
 #[derive(Debug, Default)]
 struct Settings {
     op_mode: OperationMode,
     transform_meta: TransformMethod,
+    meta_type: MetaType,
 }
 
 impl Settings {
@@ -90,6 +108,15 @@ impl Settings {
                 Ok(())
             }
             _ => Err(format!("invalid copy mode {}", new_mode)),
+        }
+    }
+    fn set_meta_type(&mut self, new_mode: &str) -> Result<(), String> {
+        match MetaType::try_from(new_mode) {
+            Ok(meta) => {
+                self.meta_type = meta;
+                Ok(())
+            }
+            _ => Err(format!("invalid meta_type {}", new_mode)),
         }
     }
 }
@@ -164,6 +191,12 @@ impl ObjectImpl for MetaTrans {
                     .default_value(TransformMethod::default().as_ref())
                     .flags(ParamFlags::READWRITE)
                     .build(),
+                gst::glib::ParamSpecString::builder("mtype")
+                    .nick("Metatype")
+                    .blurb("select metadata type")
+                    .default_value(MetaType::default().as_ref())
+                    .flags(ParamFlags::READWRITE)
+                    .build(),
             ]
         });
 
@@ -174,16 +207,24 @@ impl ObjectImpl for MetaTrans {
     fn set_property(&self, _id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
         match pspec.name() {
             "op" => {
-                let x: String = value.get().expect("type checkd upstream");
+                let x: String = value.get().expect("type checked upstream");
                 gst::info!(CAT, imp: self, "set prop op to {}", &x);
                 let mut settings = self.settings.write();
                 settings.set_op_mode(&x).expect("set op mode");
             }
             "tmethod" => {
-                let x: String = value.get().expect("type checkd upstream");
-                gst::info!(CAT, imp: self, "set prop op to {}", &x);
+                let x: String = value.get().expect("type checked upstream");
+                gst::info!(CAT, imp: self, "set tmethod to {}", &x);
                 let mut settings = self.settings.write();
-                settings.set_transform_method(&x).expect("set op mode");
+                settings
+                    .set_transform_method(&x)
+                    .expect("set transform method");
+            }
+            "mtype" => {
+                let x: String = value.get().expect("type checked upstream");
+                gst::info!(CAT, imp: self, "set metatype to {}", &x);
+                let mut settings = self.settings.write();
+                settings.set_meta_type(&x).expect("set metatype");
             }
             _ => unimplemented!(),
         }
@@ -200,6 +241,10 @@ impl ObjectImpl for MetaTrans {
             "tmethod" => {
                 let settings = self.settings.read();
                 settings.transform_meta.as_ref().to_value()
+            }
+            "mtype" => {
+                let settings = self.settings.read();
+                settings.meta_type.as_ref().to_value()
             }
             _ => unimplemented!(),
         }
@@ -225,62 +270,106 @@ impl BaseTransformImpl for MetaTrans {
         &self,
         buffer: &mut gst::BufferRef,
     ) -> Result<gst::FlowSuccess, gst::FlowError> {
-        let (op_mode, transform_meta) = {
+        let (op_mode, transform_meta, meta_type) = {
             let settings = self.settings.read();
-            (settings.op_mode, settings.transform_meta)
+            (
+                settings.op_mode,
+                settings.transform_meta,
+                settings.meta_type,
+            )
         };
         match op_mode {
-            OperationMode::Show => {
-                if let Some(meta) = buffer.meta::<ExampleRsMeta>() {
-                    gst::trace!(
-                        CAT,
-                        imp: self,
-                        "found meta ({:?}): {} {} {:?}",
-                        buffer.pts(),
-                        &meta.label(),
-                        &meta.index(),
-                        &meta.mode(),
-                    );
-                } else {
-                    gst::trace!(CAT, imp: self, "has not metadata");
+            OperationMode::Show => match meta_type {
+                MetaType::Rs => {
+                    if let Some(meta) = buffer.meta::<ExampleRsMeta>() {
+                        gst::trace!(
+                            CAT,
+                            imp: self,
+                            "found Rs meta ({:?}): {} {} {:?}",
+                            buffer.pts(),
+                            &meta.label(),
+                            &meta.index(),
+                            &meta.mode(),
+                        );
+                    } else {
+                        gst::trace!(CAT, imp: self, "has not Rs metadata");
+                    }
                 }
-            }
+                MetaType::C => {
+                    if let Some(meta) = buffer.meta::<ExampleCMeta>() {
+                        gst::trace!(
+                            CAT,
+                            imp: self,
+                            "found C meta ({:?}): {} {} {:?}",
+                            buffer.pts(),
+                            &meta.label().as_str(),
+                            &meta.count(),
+                            &meta.num(),
+                        );
+                    } else {
+                        gst::trace!(CAT, imp: self, "has not C metadata");
+                    }
+                }
+            },
             OperationMode::Add => {
                 // このプラグイン内では競合操作がないのでRelaxed
                 let count = self
                     .count
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-                let param = ExampleRsMetaParams::new(
-                    self.instance().name().to_string(),
-                    count,
-                    transform_meta.into(),
-                );
+                let msg_type = match meta_type {
+                    MetaType::Rs => {
+                        let param = ExampleRsMetaParams::new(
+                            self.instance().name().to_string(),
+                            count,
+                            transform_meta.into(),
+                        );
+                        ers_meta::ExampleRsMeta::add(buffer, param);
+                        "Rs Meta"
+                    }
+                    MetaType::C => {
+                        let param = ExampleCMetaParams::new(
+                            self.instance().name().to_string(),
+                            count.into(),
+                            count as f32 / 10.0,
+                        );
+                        ec_meta::ExampleCMeta::add(buffer, param);
+                        "C Meta"
+                    }
+                };
 
                 gst::trace!(
                     CAT,
                     imp: self,
-                    "set meta ({:?}): {} {} {:?}",
+                    "set meta {} ({:?}): {} {:?}",
+                    msg_type,
                     buffer.pts(),
-                    param.label,
-                    param.index,
-                    param.mode,
+                    self.instance().name(),
+                    count,
                 );
-                ers_meta::ExampleRsMeta::add(buffer, param);
             }
             OperationMode::Remove => {
                 // TODO 調査
                 // ユニットテストでは削除できているがgst-launchでは削除できていない
-                if let Some(param) = ers_meta::ExampleRsMeta::remove(buffer) {
-                    gst::trace!(
-                        CAT,
-                        imp: self,
-                        "remove meta ({:?}): {} {} {:?}",
-                        buffer.pts(),
-                        param.label,
-                        param.index,
-                        param.mode,
-                    );
+
+                match meta_type {
+                    MetaType::Rs => {
+                        if let Some(param) = ers_meta::ExampleRsMeta::remove(buffer) {
+                            gst::trace!(
+                                CAT,
+                                imp: self,
+                                "remove Rs meta ({:?}): {} {} {:?}",
+                                buffer.pts(),
+                                param.label,
+                                param.index,
+                                param.mode,
+                            );
+                        }
+                    }
+                    MetaType::C => {
+                        ec_meta::ExampleCMeta::remove(buffer);
+                        gst::trace!(CAT, imp: self, "remove C meta ({:?})", buffer.pts(),);
+                    }
                 }
             }
         }
