@@ -14,14 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - run: rustup toolchain install stable --profile minimal
+      - uses: Swatinem/rust-cache@v2
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
           version: 1.0
-      - run: rustup toolchain install stable --profile minimal
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "v1.65"
       - name: build
         run: make build
   fmt:
@@ -29,13 +27,11 @@ jobs:
     needs: build_cache
     steps:
       - uses: actions/checkout@v3
+      - uses: Swatinem/rust-cache@v2
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
           version: 1.0
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "v1.65"
       - name: check format
         run: cargo fmt --all -- --check
       - name: check clippy
@@ -45,12 +41,10 @@ jobs:
     needs: build_cache
     steps:
       - uses: actions/checkout@v3
+      - uses: Swatinem/rust-cache@v2
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
           version: 1.0
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "v1.65"
       - name: test
         run: cargo test --all -- --nocapture
