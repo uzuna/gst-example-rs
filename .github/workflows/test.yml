@@ -20,6 +20,8 @@ jobs:
           version: 1.0
       - run: rustup toolchain install stable --profile minimal
       - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v1.65"
       - name: build
         run: make build
   fmt:
@@ -32,6 +34,8 @@ jobs:
           packages: libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
           version: 1.0
       - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v1.65"
       - name: check format
         run: cargo fmt --all -- --check
       - name: check clippy
@@ -46,5 +50,7 @@ jobs:
           packages: libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
           version: 1.0
       - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v1.65"
       - name: test
         run: cargo test --all -- --nocapture
