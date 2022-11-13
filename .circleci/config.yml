@@ -51,6 +51,7 @@ commands:
       - run:
           name: Record build environment to use as cache key
           command: |
+            export PATH=/home/circleci/.cargo/bin:$PATH
             echo $OS_VERSION | tee /tmp/build-env
             rustc --version | tee /tmp/build-env
   save_cache_:
