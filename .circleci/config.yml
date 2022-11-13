@@ -3,7 +3,7 @@ executors:
   default:
     working_directory: ~/repo
     docker:
-      - image: cimg/rust:1.65.0
+      - image: cimg/base-current-20.04
 
 jobs:
   build-and-test:
@@ -11,10 +11,18 @@ jobs:
     steps:
       - checkout
       - run:
+          name: install cargo
+          command: |
+            curl -O https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init && \
+            chmod +x rustup-init && \
+            ./rustup-init -y --no-modify-path --default-toolchain $RUST_VERSION && \
+            rm rustup-init
+            rustup component add rustfmt
+      - run:
           name: install dependencies
           command: |
             sudo apt update
-            sudo apt install -y g++ libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+            sudo apt install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
       - record_build_env
       - restore_cache_
       - run:
