@@ -61,7 +61,8 @@ commands:
       - save_cache:
           key: cache-cargo-target-{{ .Environment.CIRCLECI_CACHE_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "/tmp/build-env" }}-{{ checksum "Cargo.lock" }}
           paths:
-            - ~/.cargo
+            - ~/.cargo/registry
+            - ~/.cargo/git
             - target
   restore_cache_:
     steps:
