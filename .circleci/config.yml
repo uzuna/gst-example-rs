@@ -3,7 +3,7 @@ executors:
   default:
     working_directory: ~/repo
     docker:
-      - image: cimg/rust:latest-stretch
+      - image: cimg/rust:1.65.0
 
 jobs:
   build-and-test:
