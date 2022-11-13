@@ -30,7 +30,9 @@ jobs:
       - restore_cache_
       - run:
           name: build
-          command: make build
+          command: |        
+            export PATH=/home/circleci/.cargo/bin:$PATH
+            make build
       - run:
           name: lint
           command: |
