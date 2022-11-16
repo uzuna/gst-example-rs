@@ -7,8 +7,13 @@
     "description": "Rust Example Plugin",
     "files": [
         {
-        "from": "../target/release/*.so",
+        "from": "../target/release/libgst*.so",
         "to": "/usr/lib/x86_64-linux-gnu/gstreamer-1.0",
+        "base": "../target/release/"
+        },
+        {
+        "from": "../target/release/lib*meta.so",
+        "to": "/usr/lib/x86_64-linux-gnu",
         "base": "../target/release/"
         }
     ],
