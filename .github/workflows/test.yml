@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     container: node:14.16
     steps:
-      - uses: node -v
+      - run: node -v
   login:
     runs-on: ubuntu-latest
     permissions: read-all
