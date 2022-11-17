@@ -9,9 +9,9 @@ on:
       - plugin
   pull_request:
     types: ["opened", "synchronize"]
+permissions: read-all
 jobs:
   login:
-    permissions: read-all
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/${{ github.actor }}/go-bin-deb:latest
