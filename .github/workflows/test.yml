@@ -37,6 +37,8 @@ jobs:
         run: cargo clippy --all-targets --all-features -- -D warnings
       - name: test
         run: cargo test --all -- --nocapture
+      - name: build release
+        run: make -C plugin build TARGET=release
   deb:
     needs: build-test
     runs-on: ubuntu-latest
