@@ -29,7 +29,7 @@ ${RUST_OUT_DIR}/libexample_rs_meta.so: ${PROJECT_DIR}meta/example-rs/src
 
 # metadataのSOを生成するのでメインmakeプラグインよりも先に生成する
 ${RUST_OUT_DIR}/libexample_c_meta.so: ${PROJECT_DIR}meta/example-c
-	make -C ${PROJECT_DIR}meta/example-c
+	make -C ${PROJECT_DIR}meta/example-c all
 
 .PHONY: clean
 clean:

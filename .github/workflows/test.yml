@@ -10,7 +10,7 @@ on:
   pull_request:
     types: ["opened", "synchronize"]
 jobs:
-  store:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -37,8 +37,8 @@ jobs:
           name: artifacts
           path: artifacts
           retention-days: 1
-  restore:
-    needs: store
+  deploy:
+    needs: build
     runs-on: ubuntu-latest
     container:
       image: uzuna/go-bin-deb:latest
@@ -74,62 +74,3 @@ jobs:
         with:
           name: package
           path: deb
-
-  # build-test:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - uses: actions/cache@v3
-  #       env:
-  #         cache-name: cache-cargo
-  #       with:
-  #         path: |
-  #           ~/.cargo/registry
-  #           ~/.cargo/git
-  #           target
-  #         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-cargo-
-  #     - uses: Swatinem/rust-cache@v2
-  #       with:
-  #         key: "build"
-  #     - name: build
-  #       run: make build
-  #     - name: check format
-  #       run: cargo fmt --all -- --check
-  #     - name: check clippy
-  #       run: cargo clippy --all-targets --all-features -- -D warnings
-  #     - name: test
-  #       run: cargo test --all -- --nocapture
-  #     - name: build release
-  #       run: make -C plugin build TARGET=release
-  # deb:
-  #   needs: build-test
-  #   runs-on: ubuntu-latest
-  #   container:
-  #     image: uzuna/go-bin-deb:latest
-  #   defaults:
-  #     run:
-  #       shell: sh
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - uses: actions/cache@v3
-  #       env:
-  #         cache-name: cache-cargo
-  #       with:
-  #         path: |
-  #           ~/.cargo/registry
-  #           ~/.cargo/git
-  #           target
-  #         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-cargo-
-  #     - run: ls -la
-  #     - name: deb
-  #       run: cd plugin && make deb
-  #     - name: Archive artifacts
-  #       uses: actions/upload-artifact@v3
-  #       with:
-  #         name: packages
-  #         path: deb
-  #         retention-days: 5

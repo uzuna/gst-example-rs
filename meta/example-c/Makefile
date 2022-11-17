@@ -1,7 +1,7 @@
 include ../../common.mk
 
 SO_NAME:=libexample_c_meta.so
-RUST_TEST_DEPS_OUT_DIR:=${RUST_OUT_DIR}/deps
+RUST_TEST_DEPS_OUT_DIR:=$(RUST_OUT_DIR)/deps
 
 CC := g++
 
@@ -30,7 +30,7 @@ LDFLAGS = -Wl,--no-undefined -L$(LIB_INSTALL_DIR) -Wl,-rpath,$(LIB_INSTALL_DIR)
 
 LIBS += `pkg-config --libs $(PKGS)`
 
-all: $(RUST_OUT_DIR)/$(SO_NAME)
+all: $(RUST_OUT_DIR)/$(SO_NAME) $(RUST_OUT_DIR)
 
 %.o: %.cpp %.h
 	$(CC) -c $< $(CFLAGS) $(INCLUDES) -o $@
