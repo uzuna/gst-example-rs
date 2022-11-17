@@ -46,7 +46,7 @@ jobs:
         - ${{ github.workspace }}:/repo
     defaults:
       run:
-        shell: bash
+        shell: sh
         working-directory: /repo
     steps:
       - uses: actions/cache@v2
