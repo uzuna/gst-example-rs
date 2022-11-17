@@ -19,9 +19,10 @@ jobs:
         uses: actions/cache@v3
         with:
           path: dummy.txt
-          key: primes
+          key: ${{ runner.os }}-dummy-${{ hashFiles('**/Cargo.lock') }}
       - run: echo "dummy" > dummy.txt
   restore:
+    needs: store
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -30,10 +31,10 @@ jobs:
         uses: actions/cache@v3
         with:
           path: dummy.txt
-          key: primes
+          key: ${{ runner.os }}-dummy-${{ hashFiles('**/Cargo.lock') }}
       - run: ls -la
-      - name: Generate dummy.txt
-        if: steps.cache-primes.outputs.cache-hit != 'true'
+      - name: get dummy.txt
+        if: steps.cache-primes.outputs.cache-hit == 'true'
         run: cat dummy.txt
 
   # build-test:
