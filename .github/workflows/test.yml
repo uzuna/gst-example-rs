@@ -55,12 +55,14 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
+      - run: mkdir artifacts
       - name: Download binaries
-        id: dounload
         uses: actions/download-artifact@v3
         with:
           name: artifacts
           path: artifacts
+      - name: 'Echo download path'
+        run: echo ${{steps.download.outputs.download-path}}
       - run: ls -la
       - name: get dummy.txt
         run: cat artifacts/dummy.txt
