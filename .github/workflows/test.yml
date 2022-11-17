@@ -19,6 +19,8 @@ jobs:
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.github_token }}
+    steps:
+      - uses: actions/checkout@v3
   build-test:
     needs: login
     runs-on: ubuntu-latest
