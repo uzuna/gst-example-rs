@@ -10,11 +10,16 @@ on:
   pull_request:
     types: ["opened", "synchronize"]
 jobs:
+  container-test-job:
+    runs-on: ubuntu-latest
+    container: node:14.16
+    steps:
+      - uses: node -v
   login:
     runs-on: ubuntu-latest
     permissions: read-all
     container:
-      image: ghcr.io/${{ github.actor }}/go-bin-deb:latest
+      image: ghcr.io/uzuna/go-bin-deb
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.github_token }}
