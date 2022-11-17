@@ -19,15 +19,9 @@ jobs:
           packages: libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
           version: 1.0
       - run: rustup toolchain install stable --profile minimal
-      - name: Cache Primes
-        id: cache-primes
-        uses: actions/cache@v3
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
+            key: "build"
       - run: mkdir artifacts
       - name: debug build
         run: make build
@@ -62,15 +56,6 @@ jobs:
         shell: sh
     steps:
       - uses: actions/checkout@v3
-      - name: Cache Primes
-        id: cache-primes
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
       - run: mkdir artifacts
       - name: Download builded binaries
         id: download
