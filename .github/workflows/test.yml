@@ -14,6 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+          version: 1.0
       - name: Cache Primes
         id: cache-primes
         uses: actions/cache@v3
@@ -52,10 +56,6 @@ jobs:
   #         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
   #         restore-keys: |
   #           ${{ runner.os }}-cargo-
-  #     - uses: awalsh128/cache-apt-pkgs-action@latest
-  #       with:
-  #         packages: libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-  #         version: 1.0
   #     - run: rustup toolchain install stable --profile minimal
   #     - uses: Swatinem/rust-cache@v2
   #       with:
