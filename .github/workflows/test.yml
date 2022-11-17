@@ -29,7 +29,18 @@ jobs:
             target
           key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
       - run: mkdir artifacts
-      - run: make -C plugin build TARGET=release
+      - name: debug build
+        run: make build
+      - name: check format
+        run: cargo fmt --all -- --check
+      - name: check clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: test
+        run: cargo test --all -- --nocapture
+      - name: release build
+        run: make -C plugin build TARGET=release
+      # job[].container を使うとcacheキー不一致でリストア出来ないため
+      # 成果物のみをartifactに保存し、パッケージビルド時にDLする
       - name: Upload artifacts
         id: upload
         uses: actions/upload-artifact@v3
@@ -41,6 +52,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     container:
+      # go-bin-deb専用のコンテナ
+      # TODO docker-hubではなくghcr.ioにからpullする
+      # uploadもしておりpackageにアクセス権も付与しているがdeniedが返ってくるため
+      # 仕方なくdocker-hubのpublicに置いている
       image: uzuna/go-bin-deb:latest
     defaults:
       run:
@@ -57,7 +72,7 @@ jobs:
             target
           key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
       - run: mkdir artifacts
-      - name: Download binaries
+      - name: Download builded binaries
         id: download
         uses: actions/download-artifact@v3
         with:
@@ -65,7 +80,6 @@ jobs:
           path: artifacts
       - name: 'Echo download path'
         run: echo ${{steps.download.outputs.download-path}}
-      - run: ls -la
       - name: make deb package
         run: make -C plugin deb
       - name: Upload package
