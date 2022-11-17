@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         env:
           cache-name: cache-cargo
         with:
@@ -24,9 +24,7 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
+            ${{ runner.os }}-cargo-
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
@@ -55,7 +53,7 @@ jobs:
         shell: sh
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         env:
           cache-name: cache-cargo
         with:
@@ -65,9 +63,7 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
+            ${{ runner.os }}-cargo-
       - run: ls -la
       - name: deb
         run: cd plugin && make deb
