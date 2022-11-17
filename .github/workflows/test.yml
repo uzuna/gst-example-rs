@@ -33,12 +33,17 @@ jobs:
       - name: Archive artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: Upload build binaries
+          name: artifacts
           path: artifacts
           retention-days: 1
   restore:
     needs: store
     runs-on: ubuntu-latest
+    container:
+      image: uzuna/go-bin-deb:latest
+    defaults:
+      run:
+        shell: sh
     steps:
       - uses: actions/checkout@v3
       - name: Cache Primes
