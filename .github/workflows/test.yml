@@ -10,7 +10,17 @@ on:
   pull_request:
     types: ["opened", "synchronize"]
 jobs:
+  login:
+    permissions:
+      packages: read
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/uzuna/go-bin-deb:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.github_token }}
   build-test:
+    needs: login
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
