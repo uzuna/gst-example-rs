@@ -12,9 +12,12 @@ on:
 jobs:
   login:
     runs-on: ubuntu-latest
-    permissions: read-all
+    permissions: write-all
     container:
-      image: ghcr.io/uzuna/go-bin-deb:focal
+      image: ghcr.io/uzuna/go-bin-deb:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.github_token }}
     steps:
       - uses: actions/checkout@v3
   build-test:
