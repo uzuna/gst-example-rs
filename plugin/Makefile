@@ -31,4 +31,10 @@ deb:
 	make build TARGET=release
 	rm -rf pkg-build dist
 	mkdir -p ${DEB_DIR}
+	# need go-bin-deb: `go install github.com/mh-cbon/go-bin-deb@latest`
 	go-bin-deb generate --arch ${ARCH} --version ${DEB_VERSION} --output ${DEB_DIR}
+
+cargo-deb:
+	make build TARGET=release
+	# need cargo-deb: `cargo install cargo-deb`
+	cargo deb --no-build -o ../deb/

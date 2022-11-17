@@ -19,7 +19,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            target
+            ${{ github.workspace }}
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -37,3 +37,32 @@ jobs:
         run: cargo clippy --all-targets --all-features -- -D warnings
       - name: test
         run: cargo test --all -- --nocapture
+  deb:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/uzuna/go-bin-deb:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.github_token }}
+      volumes:
+        - ${{ github.workspace }}:/repo
+    defaults:
+      run:
+        shell: bash
+        working-directory: /repo
+    steps:
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ${{ github.workspace }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: deb
+        run: cd plugin && make deb
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: packages
+          path: deb
+          retention-days: 5

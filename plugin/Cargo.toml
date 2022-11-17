@@ -28,3 +28,13 @@ gst-plugin-version-helper = {  git = "https://gitlab.freedesktop.org/gstreamer/g
 name = "gstrsexample"
 crate-type = ["cdylib"]
 path = "src/lib.rs"
+
+
+[package.metadata.deb]
+maintainer = "FUJINAKA Fumiya <uzuna.kf@gmail.com>"
+copyright = "2022, FUJINAKA Fumiya <uzuna.kg@gmail.com>"
+assets = [
+    ["target/release/libgstrsexample.so", "usr/lib/x86_64-linux-gnu/gstreamer-1.0/", "755"],
+    ["target/release/libexample_c_meta.so", "usr/lib/x86_64-linux-gnu/", "755"],
+    ["target/release/libexample_rs_meta.so", "usr/lib/x86_64-linux-gnu/", "755"],
+]
