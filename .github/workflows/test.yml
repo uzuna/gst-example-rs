@@ -10,7 +10,7 @@ on:
   pull_request:
     types: ["opened", "synchronize"]
 jobs:
-  build_test:
+  build-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -38,6 +38,7 @@ jobs:
       - name: test
         run: cargo test --all -- --nocapture
   deb:
+    needs: build-test
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/uzuna/go-bin-deb:latest
