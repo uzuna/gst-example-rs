@@ -5,3 +5,4 @@
 deb
 *.deb
 pkg-build
+artifacts

@@ -29,8 +29,9 @@ jobs:
             target
           key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
       - run: mkdir artifacts
-      - run: echo "dummy" > artifacts/dummy.txt
+      - run: make -C plugin build TARGET=release
       - name: Upload artifacts
+        id: upload
         uses: actions/upload-artifact@v3
         with:
           name: artifacts
@@ -57,6 +58,7 @@ jobs:
           key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
       - run: mkdir artifacts
       - name: Download binaries
+        id: download
         uses: actions/download-artifact@v3
         with:
           name: artifacts
@@ -64,8 +66,14 @@ jobs:
       - name: 'Echo download path'
         run: echo ${{steps.download.outputs.download-path}}
       - run: ls -la
-      - name: get dummy.txt
-        run: cat artifacts/dummy.txt
+      - name: make deb package
+        run: make -C plugin deb
+      - name: Upload package
+        id: upload
+        uses: actions/upload-artifact@v3
+        with:
+          name: package
+          path: deb
 
   # build-test:
   #   runs-on: ubuntu-latest

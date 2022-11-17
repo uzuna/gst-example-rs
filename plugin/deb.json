@@ -7,21 +7,21 @@
     "description": "Rust Example Plugin",
     "files": [
         {
-        "from": "../target/release/libgst*.so",
+        "from": "artifacts/libgst*.so",
         "to": "/usr/lib/x86_64-linux-gnu/gstreamer-1.0",
-        "base": "../target/release/"
+        "base": "artifacts/"
         },
         {
-        "from": "../target/release/lib*meta.so",
+        "from": "artifacts/lib*meta.so",
         "to": "/usr/lib/x86_64-linux-gnu",
-        "base": "../target/release/"
+        "base": "artifacts/"
         }
     ],
     "copyrights": [
         {
         "files": "*",
         "copyright": "2022, FUJINAKA Fumiya <uzuna.kg@gmail.com>",
-        "license": "MIT "
+        "license": "MIT"
         }
     ]
 }
