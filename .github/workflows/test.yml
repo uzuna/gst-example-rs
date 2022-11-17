@@ -30,7 +30,7 @@ jobs:
           key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
       - run: mkdir artifacts
       - run: echo "dummy" > artifacts/dummy.txt
-      - name: Archive artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
           name: artifacts
@@ -60,6 +60,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: artifacts
+          path: artifacts
       - run: ls -la
       - name: get dummy.txt
         run: cat artifacts/dummy.txt
