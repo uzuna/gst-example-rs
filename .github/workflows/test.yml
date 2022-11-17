@@ -10,17 +10,6 @@ on:
   pull_request:
     types: ["opened", "synchronize"]
 jobs:
-  ls:
-    needs: build-test
-    runs-on: ubuntu-latest
-    container:
-      image: uzuna/go-bin-deb:latest
-    defaults:
-      run:
-        shell: sh
-    steps:
-      - uses: actions/checkout@v3
-      - run: ls -la
   build-test:
     runs-on: ubuntu-latest
     steps:
@@ -30,7 +19,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            ${{ github.workspace }}
+            target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
@@ -57,13 +46,15 @@ jobs:
       run:
         shell: sh
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/cache@v2
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            ${{ github.workspace }}
+            target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - run: ls -la
       - name: deb
         run: cd plugin && make deb
       - name: Archive artifacts
