@@ -363,7 +363,7 @@ dependencies = [
 
 [[package]]
 name = "gst-example-plugin"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "example-c-sys",
  "example-rs-sys",

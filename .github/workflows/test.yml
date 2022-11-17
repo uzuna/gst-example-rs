@@ -2,7 +2,7 @@ name: Build and test
 on:
   push:
     branches:
-      - 'master'
+      - master
     paths:
       - gst-example
       - meta
@@ -10,17 +10,10 @@ on:
   pull_request:
     types: ["opened", "synchronize"]
 jobs:
-  build_test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
@@ -28,8 +21,9 @@ jobs:
       - run: rustup toolchain install stable --profile minimal
       - uses: Swatinem/rust-cache@v2
         with:
-          key: "build"
-      - name: build
+            key: "build"
+      - run: mkdir artifacts
+      - name: debug build
         run: make build
       - name: check format
         run: cargo fmt --all -- --check
@@ -37,3 +31,45 @@ jobs:
         run: cargo clippy --all-targets --all-features -- -D warnings
       - name: test
         run: cargo test --all -- --nocapture
+      - name: release build
+        run: make -C plugin build TARGET=release
+      # job[].container を使うとcacheキー不一致でリストア出来ないため
+      # 成果物のみをartifactに保存し、パッケージビルド時にDLする
+      - name: Upload artifacts
+        id: upload
+        uses: actions/upload-artifact@v3
+        with:
+          name: artifacts
+          path: artifacts
+          retention-days: 1
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      # go-bin-deb専用のコンテナ
+      # TODO docker-hubではなくghcr.ioにからpullする
+      # uploadもしておりpackageにアクセス権も付与しているがdeniedが返ってくるため
+      # 仕方なくdocker-hubのpublicに置いている
+      image: uzuna/go-bin-deb:latest
+    defaults:
+      run:
+        shell: sh
+    steps:
+      - uses: actions/checkout@v3
+      - run: mkdir artifacts
+      - name: Download builded binaries
+        id: download
+        uses: actions/download-artifact@v3
+        with:
+          name: artifacts
+          path: artifacts
+      - name: 'Echo download path'
+        run: echo ${{steps.download.outputs.download-path}}
+      - name: make deb package
+        run: make -C plugin deb
+      - name: Upload package
+        id: upload
+        uses: actions/upload-artifact@v3
+        with:
+          name: package
+          path: deb

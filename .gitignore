@@ -1,2 +1,8 @@
 /target
 *.o
+
+# go-bin-deb
+deb
+*.deb
+pkg-build
+artifacts

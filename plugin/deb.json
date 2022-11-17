@@ -1,0 +1,27 @@
+{
+    "name": "gst-example-plugin",
+    "version": "!version!",
+    "maintainer": "FUJINAKA Fumiya <uzuna.kg@gmail.com>",
+    "arch": "!arch!",
+    "homepage": "https://github.com/uzuna/gst-example-rs",
+    "description": "Rust Example Plugin",
+    "files": [
+        {
+        "from": "artifacts/libgst*.so",
+        "to": "/usr/lib/x86_64-linux-gnu/gstreamer-1.0",
+        "base": "artifacts/"
+        },
+        {
+        "from": "artifacts/lib*meta.so",
+        "to": "/usr/lib/x86_64-linux-gnu",
+        "base": "artifacts/"
+        }
+    ],
+    "copyrights": [
+        {
+        "files": "*",
+        "copyright": "2022, FUJINAKA Fumiya <uzuna.kg@gmail.com>",
+        "license": "MIT"
+        }
+    ]
+}
