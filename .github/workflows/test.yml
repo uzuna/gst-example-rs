@@ -10,6 +10,17 @@ on:
   pull_request:
     types: ["opened", "synchronize"]
 jobs:
+  deb:
+    needs: build-test
+    runs-on: ubuntu-latest
+    container:
+      image: uzuna/go-bin-deb:latest
+    defaults:
+      run:
+        shell: sh
+    steps:
+      - uses: actions/checkout@v3
+      - run: ls -la
   build-test:
     runs-on: ubuntu-latest
     steps:
@@ -42,12 +53,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: uzuna/go-bin-deb:latest
-      volumes:
-        - ${{ github.workspace }}:/repo
     defaults:
       run:
         shell: sh
-        working-directory: /repo
     steps:
       - uses: actions/cache@v2
         with:
