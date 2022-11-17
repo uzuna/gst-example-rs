@@ -11,8 +11,7 @@ on:
     types: ["opened", "synchronize"]
 jobs:
   login:
-    permissions:
-      packages: read
+    permissions: read-all
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/uzuna/go-bin-deb:latest
