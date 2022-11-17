@@ -10,7 +10,7 @@ on:
   pull_request:
     types: ["opened", "synchronize"]
 jobs:
-  deb:
+  ls:
     needs: build-test
     runs-on: ubuntu-latest
     container:
