@@ -27,12 +27,23 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-            dummy.txt
           key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
-      - run: echo "dummy" > dummy.txt
+      - run: mkdir artifacts
+      - run: echo "dummy" > artifacts/dummy.txt
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: Upload build binaries
+          path: artifacts
+          retention-days: 1
   restore:
     needs: store
     runs-on: ubuntu-latest
+    container:
+      image: uzuna/go-bin-deb:latest
+    defaults:
+      run:
+        shell: sh
     steps:
       - uses: actions/checkout@v3
       - name: Cache Primes
@@ -43,12 +54,15 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-            dummy.txt
           key: ${{ runner.os }}-rust-${{ hashFiles('**/Cargo.lock') }}
+      - name: Download binaries
+        id: dounload
+        uses: actions/download-artifact@v3
+        with:
+          name: artifacts
       - run: ls -la
       - name: get dummy.txt
-        if: steps.cache-primes.outputs.cache-hit == 'true'
-        run: cat dummy.txt
+        run: cat artifacts/dummy.txt
 
   # build-test:
   #   runs-on: ubuntu-latest
