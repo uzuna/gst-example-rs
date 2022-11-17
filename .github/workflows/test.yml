@@ -39,6 +39,8 @@ jobs:
         run: cargo test --all -- --nocapture
   deb:
     needs: build-test
+    permissions:
+      packages: read
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/uzuna/go-bin-deb:latest
