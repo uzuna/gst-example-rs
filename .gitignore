@@ -6,3 +6,5 @@ deb
 *.deb
 pkg-build
 artifacts
+
+*.dot

@@ -23,3 +23,8 @@ endif
 
 ${BUILD_DIR}:
 	mkdir -p ${BUILD_DIR}
+
+clean:
+	rm -rf ${BUILD_DIR}
+	rm -rf ${DEB_DIR}
+	cargo clean

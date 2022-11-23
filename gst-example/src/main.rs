@@ -1,7 +1,7 @@
 use derive_more::{Display, Error};
 use gst::{
     prelude::{ElementExtManual, GObjectExtManualGst, GstBinExtManual},
-    traits::{ElementExt, GstObjectExt},
+    traits::{ElementExt, GstBinExt, GstObjectExt},
     Element, Pipeline,
 };
 use std::process::Command;
@@ -32,6 +32,11 @@ enum Gst {
     AppSrcText {
         #[structopt(flatten)]
         testsrc: VideoTestSrcOpt,
+        #[structopt(flatten)]
+        videocaps: VideoCapsOpt,
+    },
+    /// use gstbin
+    GstBin {
         #[structopt(flatten)]
         videocaps: VideoCapsOpt,
     },
@@ -143,6 +148,22 @@ fn build_gst_run(
     Ok(pipeline)
 }
 
+/// use bin in application
+pub(crate) fn build_bin() -> Result<gst::Pipeline, anyhow::Error> {
+    gst::init()?;
+
+    // build bin
+    let bin = gst::Bin::new(Some("example_bin"));
+    let videosrc = gst::ElementFactory::make("videotestsrc").build()?;
+    let sink = gst::ElementFactory::make("autovideosink").build()?;
+    bin.add_many(&[&videosrc, &sink])?;
+    videosrc.link(&sink)?;
+
+    let pipeline = gst::Pipeline::default();
+    pipeline.add(&bin)?;
+    Ok(pipeline)
+}
+
 fn run_pipeline(pipeline: gst::Pipeline) -> Result<(), anyhow::Error> {
     // start playing
     pipeline.set_state(gst::State::Playing)?;
@@ -223,6 +244,12 @@ fn main() {
         Gst::AppSrcText { testsrc, videocaps } => {
             let pipeline = app::build_appsrc_text_overlay(&testsrc, &videocaps)
                 .expect("failed to build gst run pipeline");
+            if let Err(e) = run_pipeline(pipeline) {
+                log::error!("gstream error: {:?}", e);
+            }
+        }
+        Gst::GstBin { .. } => {
+            let pipeline = build_bin().expect("failed to build gst run pipeline");
             if let Err(e) = run_pipeline(pipeline) {
                 log::error!("gstream error: {:?}", e);
             }
