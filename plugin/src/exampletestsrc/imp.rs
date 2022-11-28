@@ -41,8 +41,34 @@ pub struct ExampleTestSrc {
 }
 
 impl ExampleTestSrc {
-    // videosrcを設定する
-    // videotestsrcとtypefindを繋ぐだけ
+    /// 自身に子要素を自身に追加して再生可能にする
+    fn setup_source(&self) -> Result<(), glib::BoolError> {
+        let videosrc = gst::ElementFactory::make("videotestsrc").build()?;
+        let addmeta = gst::ElementFactory::make("metatrans").build()?;
+        let scale = gst::ElementFactory::make("videoscale").build()?;
+
+        addmeta.set_property_from_str("op", "add");
+
+        let caps = {
+            let settings = self.settings.read();
+            gst::Caps::builder("video/x-raw")
+                .field("width", 600)
+                .field("height", 400)
+                .field("framerate", settings.fps)
+                .build()
+        };
+        self.add_element(&videosrc).unwrap();
+        self.add_element(&addmeta).unwrap();
+        self.add_element(&scale).unwrap();
+        videosrc.link(&addmeta).unwrap();
+        addmeta.link_filtered(&scale, &caps)?;
+
+        // binの前後のエレメントと繋ぐためにbinにGhostPadを作り最後の小要素のsrcをつなげる
+        let pad = scale.static_pad("src").expect("Failed to get src pad");
+        let ghost_pad = gst::GhostPad::with_target(Some("src"), &pad)?;
+        self.obj().add_pad(&ghost_pad)?;
+        Ok(())
+    }
 }
 
 impl ElementImpl for ExampleTestSrc {
@@ -83,30 +109,7 @@ impl ElementImpl for ExampleTestSrc {
         gst::info!(CAT, "Call change state {:?}", transition);
         // before play
         if transition == gst::StateChange::ReadyToPaused {
-            // 子要素を自身に追加
-            let videosrc = gst::ElementFactory::make("videotestsrc").build().unwrap();
-            let addmeta = gst::ElementFactory::make("metatrans").build().unwrap();
-            let scale = gst::ElementFactory::make("videoscale").build().unwrap();
-            addmeta.set_property_from_str("op", "add");
-
-            let caps = {
-                let settings = self.settings.read();
-                gst::Caps::builder("video/x-raw")
-                    .field("width", 600)
-                    .field("height", 400)
-                    .field("framerate", settings.fps)
-                    .build()
-            };
-            self.add_element(&videosrc).unwrap();
-            self.add_element(&addmeta).unwrap();
-            self.add_element(&scale).unwrap();
-            videosrc.link(&addmeta).unwrap();
-            addmeta.link_filtered(&scale, &caps).unwrap();
-
-            // binの前後のエレメントと繋ぐためにbinにGhostPadを作り最後の小要素のsrcをつなげる
-            let pad = scale.static_pad("src").expect("Failed to get src pad");
-            let ghost_pad = gst::GhostPad::with_target(Some("src"), &pad).unwrap();
-            self.obj().add_pad(&ghost_pad).unwrap();
+            self.setup_source().unwrap();
         }
         self.parent_change_state(transition)
         // after play!!
