@@ -149,7 +149,7 @@ fn build_gst_run(
 }
 
 /// use bin in application
-pub(crate) fn build_bin() -> Result<gst::Pipeline, anyhow::Error> {
+pub(crate) fn build_bin(videocaps: &VideoCapsOpt) -> Result<gst::Pipeline, anyhow::Error> {
     gst::init()?;
 
     // build bin
@@ -157,7 +157,8 @@ pub(crate) fn build_bin() -> Result<gst::Pipeline, anyhow::Error> {
     let videosrc = gst::ElementFactory::make("videotestsrc").build()?;
     let sink = gst::ElementFactory::make("autovideosink").build()?;
     bin.add_many(&[&videosrc, &sink])?;
-    videosrc.link(&sink)?;
+    // attach caps
+    videosrc.link_filtered(&sink, &videocaps.get_caps())?;
 
     let pipeline = gst::Pipeline::default();
     pipeline.add(&bin)?;
@@ -248,8 +249,8 @@ fn main() {
                 log::error!("gstream error: {:?}", e);
             }
         }
-        Gst::GstBin { .. } => {
-            let pipeline = build_bin().expect("failed to build gst run pipeline");
+        Gst::GstBin { videocaps } => {
+            let pipeline = build_bin(&videocaps).expect("failed to build gst run pipeline");
             if let Err(e) = run_pipeline(pipeline) {
                 log::error!("gstream error: {:?}", e);
             }

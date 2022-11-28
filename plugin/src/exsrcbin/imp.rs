@@ -1,4 +1,7 @@
 use gst::glib;
+use gst::prelude::ElementExtManual;
+use gst::prelude::GObjectExtManualGst;
+
 use gst::subclass::prelude::*;
 use gst::traits::ElementExt;
 
@@ -62,9 +65,16 @@ impl ElementImpl for ExSrcBin {
         gst::info!(CAT, "Call change state {:?}", transition);
         // before play
         if transition == gst::StateChange::ReadyToPaused {
+            // 子要素を自身に追加
             let videosrc = gst::ElementFactory::make("videotestsrc").build().unwrap();
+            let addmeta = gst::ElementFactory::make("metatrans").build().unwrap();
+            addmeta.set_property_from_str("op", "add");
             self.add_element(&videosrc).unwrap();
-            let pad = videosrc.static_pad("src").expect("Failed to get src pad");
+            self.add_element(&addmeta).unwrap();
+            videosrc.link(&addmeta).unwrap();
+
+            // binの前後のエレメントと繋ぐためにbinにGhostPadを作り最後の小要素のsrcをつなげる
+            let pad = addmeta.static_pad("src").expect("Failed to get src pad");
             let ghost_pad = gst::GhostPad::with_target(Some("src"), &pad).unwrap();
             self.obj().add_pad(&ghost_pad).unwrap();
         }
