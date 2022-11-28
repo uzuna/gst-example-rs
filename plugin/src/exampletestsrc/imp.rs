@@ -112,7 +112,7 @@ impl ElementImpl for ExampleTestSrc {
             self.setup_source().unwrap();
         }
         self.parent_change_state(transition)
-        // after play!!
+        // after play
     }
 
     fn request_new_pad(
