@@ -33,6 +33,11 @@ run.trans: build
 run.meta: build
 	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=1,metatrans:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc ! video/x-raw,width=600,height=400,framerate=300/1 ! metatrans name=addrs op=add tmethod=${TMETHOD} ! metatrans name=addc mtype=c op=add tmethod=${TMETHOD} ! metatrans name=fc op=show mtype=c ! videoscale ! video/x-raw,width=300,height=200 ! videoconvert ! testtrans copymode=${COPYMODE} ! metatrans name=frs op=show ! metatrans op=remove ! metatrans op=show ! autovideosink
 
+# metadataの付与と表示テスト
+.PHONY: run.bin
+run.bin: build
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=1,exsrcbin:7,metatrans:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} exampletestsrc fps=10/1 ! videoscale ! video/x-raw,width=300,height=200 ! metatrans op=show ! autovideosink
+
 .PHONY: deb
 deb:
 	make -C plugin deb
