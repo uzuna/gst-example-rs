@@ -1,11 +1,15 @@
 use gst::glib;
+use gst::glib::ParamFlags;
 use gst::prelude::ElementExtManual;
 use gst::prelude::GObjectExtManualGst;
-
+use gst::prelude::ParamSpecBuilderExt;
+use gst::prelude::ToValue;
 use gst::subclass::prelude::*;
 use gst::traits::ElementExt;
+use gst::Fraction;
 
 use once_cell::sync::Lazy;
+use parking_lot::RwLock;
 
 use super::CLASS_NAME;
 use super::ELEMENT_NAME;
@@ -17,9 +21,23 @@ static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
         Some(CLASS_NAME),
     )
 });
+
+#[derive(Debug)]
+struct Settings {
+    fps: Fraction,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            fps: Fraction::new(15, 1),
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct ExampleTestSrc {
-    // source: RwLock<GstElement>
+    settings: RwLock<Settings>,
 }
 
 impl ExampleTestSrc {
@@ -71,11 +89,14 @@ impl ElementImpl for ExampleTestSrc {
             let scale = gst::ElementFactory::make("videoscale").build().unwrap();
             addmeta.set_property_from_str("op", "add");
 
-            let caps = gst::Caps::builder("video/x-raw")
-                .field("width", 600)
-                .field("height", 400)
-                .field("framerate", gst::Fraction::new(15, 1))
-                .build();
+            let caps = {
+                let settings = self.settings.read();
+                gst::Caps::builder("video/x-raw")
+                    .field("width", 600)
+                    .field("height", 400)
+                    .field("framerate", settings.fps)
+                    .build()
+            };
             self.add_element(&videosrc).unwrap();
             self.add_element(&addmeta).unwrap();
             self.add_element(&scale).unwrap();
@@ -111,7 +132,44 @@ impl ElementImpl for ExampleTestSrc {
         self.parent_send_event(event)
     }
 }
-impl ObjectImpl for ExampleTestSrc {}
+impl ObjectImpl for ExampleTestSrc {
+    fn properties() -> &'static [glib::ParamSpec] {
+        static PROPERTIES: Lazy<Vec<glib::ParamSpec>> = Lazy::new(|| {
+            vec![gst::param_spec::ParamSpecFraction::builder("fps")
+                .nick("FPS")
+                .blurb("frame per seconds")
+                .minimum(Fraction::new(1, 1))
+                .maximum(Fraction::new(90, 1))
+                .default_value(Settings::default().fps)
+                .flags(ParamFlags::READWRITE)
+                .build()]
+        });
+
+        PROPERTIES.as_ref()
+    }
+
+    fn set_property(&self, _id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
+        match pspec.name() {
+            "fps" => {
+                let x: Fraction = value.get().expect("type checkd upstream");
+                gst::info!(CAT, imp: self, "set prop fps to {}", &x);
+                let mut settings = self.settings.write();
+                settings.fps = x;
+            }
+            _ => unimplemented!(),
+        }
+    }
+
+    fn property(&self, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+        match pspec.name() {
+            "fps" => {
+                let settings = self.settings.read();
+                settings.fps.to_value()
+            }
+            _ => unimplemented!(),
+        }
+    }
+}
 impl GstObjectImpl for ExampleTestSrc {}
 
 #[glib::object_subclass]
