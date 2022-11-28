@@ -14,20 +14,20 @@ static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
     gst::DebugCategory::new(
         ELEMENT_NAME,
         gst::DebugColorFlags::empty(),
-        Some("ExSrcBin"),
+        Some(CLASS_NAME),
     )
 });
 #[derive(Default)]
-pub struct ExSrcBin {
+pub struct ExampleTestSrc {
     // source: RwLock<GstElement>
 }
 
-impl ExSrcBin {
+impl ExampleTestSrc {
     // videosrcを設定する
     // videotestsrcとtypefindを繋ぐだけ
 }
 
-impl ElementImpl for ExSrcBin {
+impl ElementImpl for ExampleTestSrc {
     fn metadata() -> Option<&'static gst::subclass::ElementMetadata> {
         static ELEMENT_METADATA: Lazy<gst::subclass::ElementMetadata> = Lazy::new(|| {
             gst::subclass::ElementMetadata::new(
@@ -68,13 +68,22 @@ impl ElementImpl for ExSrcBin {
             // 子要素を自身に追加
             let videosrc = gst::ElementFactory::make("videotestsrc").build().unwrap();
             let addmeta = gst::ElementFactory::make("metatrans").build().unwrap();
+            let scale = gst::ElementFactory::make("videoscale").build().unwrap();
             addmeta.set_property_from_str("op", "add");
+
+            let caps = gst::Caps::builder("video/x-raw")
+                .field("width", 600)
+                .field("height", 400)
+                .field("framerate", gst::Fraction::new(15, 1))
+                .build();
             self.add_element(&videosrc).unwrap();
             self.add_element(&addmeta).unwrap();
+            self.add_element(&scale).unwrap();
             videosrc.link(&addmeta).unwrap();
+            addmeta.link_filtered(&scale, &caps).unwrap();
 
             // binの前後のエレメントと繋ぐためにbinにGhostPadを作り最後の小要素のsrcをつなげる
-            let pad = addmeta.static_pad("src").expect("Failed to get src pad");
+            let pad = scale.static_pad("src").expect("Failed to get src pad");
             let ghost_pad = gst::GhostPad::with_target(Some("src"), &pad).unwrap();
             self.obj().add_pad(&ghost_pad).unwrap();
         }
@@ -102,17 +111,17 @@ impl ElementImpl for ExSrcBin {
         self.parent_send_event(event)
     }
 }
-impl ObjectImpl for ExSrcBin {}
-impl GstObjectImpl for ExSrcBin {}
+impl ObjectImpl for ExampleTestSrc {}
+impl GstObjectImpl for ExampleTestSrc {}
 
 #[glib::object_subclass]
-impl ObjectSubclass for ExSrcBin {
+impl ObjectSubclass for ExampleTestSrc {
     const NAME: &'static str = CLASS_NAME;
-    type Type = super::ExSrcBin;
+    type Type = super::ExampleTestSrc;
     type ParentType = gst::Bin;
 }
 
-impl BinImpl for ExSrcBin {
+impl BinImpl for ExampleTestSrc {
     fn handle_message(&self, message: gst::Message) {
         gst::info!(CAT, "handle_message {:?}", message);
         self.parent_handle_message(message)

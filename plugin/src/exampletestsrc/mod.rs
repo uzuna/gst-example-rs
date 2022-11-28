@@ -3,13 +3,13 @@
 use gst::glib;
 use gst::prelude::*;
 
-const ELEMENT_NAME: &str = "exsrcbin";
-const CLASS_NAME: &str = "ExSrcBin";
+const ELEMENT_NAME: &str = "exampletestsrc";
+const CLASS_NAME: &str = "ExampleTestSrc";
 
 mod imp;
 
 gst::glib::wrapper! {
-    pub struct ExSrcBin(ObjectSubclass<imp::ExSrcBin>) @extends gst::Bin, gst::Element, gst::Object;
+    pub struct ExampleTestSrc(ObjectSubclass<imp::ExampleTestSrc>) @extends gst::Bin, gst::Element, gst::Object;
 }
 
 pub fn register(plugin: &gst::Plugin) -> Result<(), glib::BoolError> {
@@ -17,6 +17,6 @@ pub fn register(plugin: &gst::Plugin) -> Result<(), glib::BoolError> {
         Some(plugin),
         ELEMENT_NAME,
         gst::Rank::None,
-        ExSrcBin::static_type(),
+        ExampleTestSrc::static_type(),
     )
 }
