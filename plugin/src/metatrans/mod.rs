@@ -7,6 +7,7 @@ const ELEMENT_NAME: &str = "metatrans";
 const CLASS_NAME: &str = "MestTrans";
 
 mod imp;
+pub mod metaklv;
 
 gst::glib::wrapper! {
     pub struct MetaTrans(ObjectSubclass<imp::MetaTrans>) @extends gst_base::BaseTransform, gst::Element, gst::Object;

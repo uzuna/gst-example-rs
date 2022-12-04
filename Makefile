@@ -38,6 +38,12 @@ run.meta: build
 run.bin: build
 	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=1,exsrcbin:7,metatrans:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} exampletestsrc fps=10/1 ! videoscale ! video/x-raw,width=300,height=200 ! metatrans op=show ! autovideosink
 
+# klv demux
+.PHONY: run.klvsrc
+run.klvsrc: build
+# パイプラインが2分岐するのでqueueが必要
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=1,klvtestsrc:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} klvtestsrc ! fakesink dump=true sync=true
+
 .PHONY: deb
 deb:
 	make -C plugin deb

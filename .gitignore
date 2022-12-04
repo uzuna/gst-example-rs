@@ -8,3 +8,5 @@ pkg-build
 artifacts
 
 *.dot
+*.m2ts
+testdata
