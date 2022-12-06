@@ -44,6 +44,14 @@ run.klvsrc: build
 # パイプラインが2分岐するのでqueueが必要
 	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=1,klvtestsrc:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} klvtestsrc ! fakesink dump=true sync=true
 
+.PHONY: run.save_klvts
+run.save_klvts: build
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=3,klvtestsrc:7,filesink:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc is-live=true ! video/x-raw,framerate=30/1 ! x264enc ! mpegtsmux name=m ! filesink location=test.m2ts klvtestsrc is-live=true fps=10 ! m.
+
+.PHONY: run.play_klvts
+run.play_klvts: build
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=3 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} filesrc location=test.m2ts ! tsdemux name=t ! video/x-h264 ! decodebin ! autovideosink t. ! meta/x-klv,parsed=true ! queue ! fakesink dump=true 
+
 .PHONY: deb
 deb:
 	make -C plugin deb

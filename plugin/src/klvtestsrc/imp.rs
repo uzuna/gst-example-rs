@@ -1,11 +1,11 @@
 use std::sync::atomic::AtomicI32;
-use std::sync::Mutex;
+use std::sync::{Mutex, RwLock};
 
 use ers_meta::ExampleRsMetaParams;
 use gst::glib::ParamFlags;
 use gst::prelude::{
-    ClockExtManual, Displayable, ElementExtManual, GObjectExtManualGst, OptionAdd,
-    ParamSpecBuilderExt, ToValue,
+    ClockExtManual, Displayable, ElementExtManual, GObjectExtManualGst, GstParamSpecBuilderExt,
+    OptionAdd, ParamSpecBuilderExt, ToValue,
 };
 use gst::subclass::prelude::*;
 use gst::traits::{ClockExt, ElementExt};
@@ -38,14 +38,19 @@ pub static KLV_CAPS: Lazy<Caps> = Lazy::new(|| {
         .build()
 });
 
+// properties()でクラス定数を参照できないので外部に定義
+const DEFAULT_IS_LIVE: bool = false;
+
 struct Settings {
     fps: Fraction,
+    is_live: bool,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
             fps: Fraction::new(30, 1),
+            is_live: DEFAULT_IS_LIVE,
         }
     }
 }
@@ -68,8 +73,10 @@ impl Default for ClockWait {
 pub struct KlvTestSrc {
     count: AtomicI32,
     clock_wait: Mutex<ClockWait>,
-    settings: Mutex<Settings>,
+    settings: RwLock<Settings>,
 }
+
+impl KlvTestSrc {}
 
 impl ElementImpl for KlvTestSrc {
     fn metadata() -> Option<&'static gst::subclass::ElementMetadata> {
@@ -105,7 +112,11 @@ impl ElementImpl for KlvTestSrc {
         transition: gst::StateChange,
     ) -> Result<gst::StateChangeSuccess, gst::StateChangeError> {
         gst::debug!(CAT, imp: self, "change_state {}", &transition);
-        self.obj().set_live(true);
+
+        if let gst::StateChange::ReadyToPaused = transition {
+            self.obj().set_live(self.settings.read().unwrap().is_live);
+        }
+
         self.parent_change_state(transition)
     }
 }
@@ -119,8 +130,71 @@ impl ObjectImpl for KlvTestSrc {
         let obj = self.obj();
         // Initialize live-ness and notify the base class that
         // we'd like to operate in Time format
-        obj.set_live(true);
+        obj.set_live(DEFAULT_IS_LIVE);
         obj.set_format(gst::Format::Time);
+    }
+
+    fn properties() -> &'static [glib::ParamSpec] {
+        static PROPERTIES: Lazy<Vec<glib::ParamSpec>> = Lazy::new(|| {
+            vec![
+                gst::param_spec::ParamSpecFraction::builder("fps")
+                    .nick("FPS")
+                    .blurb("frame per seconds")
+                    .minimum(Fraction::new(1, 1))
+                    .maximum(Fraction::new(90, 1))
+                    .default_value(Settings::default().fps)
+                    .flags(ParamFlags::READWRITE)
+                    .build(),
+                glib::ParamSpecBoolean::builder("is-live")
+                    .nick("Is Live")
+                    .blurb("(Pseudo) live output")
+                    .default_value(DEFAULT_IS_LIVE)
+                    .mutable_ready()
+                    .build(),
+            ]
+        });
+
+        PROPERTIES.as_ref()
+    }
+
+    fn set_property(&self, _id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
+        match pspec.name() {
+            "fps" => {
+                let x: Fraction = value.get().expect("type checkd upstream");
+                gst::info!(CAT, imp: self, "set prop fps to {}", &x);
+                let mut settings = self.settings.write().unwrap();
+                settings.fps = x;
+            }
+            "is-live" => {
+                let mut settings = self.settings.write().unwrap();
+                let is_live = value.get().expect("type checked upstream");
+                gst::info!(
+                    CAT,
+                    imp: self,
+                    "Changing is-live from {} to {}",
+                    settings.is_live,
+                    is_live
+                );
+                settings.is_live = is_live;
+            }
+
+            _ => unimplemented!(),
+        }
+    }
+
+    fn property(&self, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
+        match pspec.name() {
+            "fps" => {
+                let settings = self.settings.read().unwrap();
+                settings.fps.to_value()
+            }
+            "is-live" => {
+                let settings = self.settings.read().unwrap();
+                settings.is_live.to_value()
+            }
+
+            _ => unimplemented!(),
+        }
     }
 }
 
@@ -143,6 +217,29 @@ impl BaseSrcImpl for KlvTestSrc {
 
         Ok(())
     }
+
+    fn unlock(&self) -> Result<(), gst::ErrorMessage> {
+        // This should unblock the create() function ASAP, so we
+        // just unschedule the clock it here, if any.
+        gst::debug!(CAT, imp: self, "Unlocking");
+        let mut clock_wait = self.clock_wait.lock().unwrap();
+        if let Some(clock_id) = clock_wait.clock_id.take() {
+            clock_id.unschedule();
+        }
+        clock_wait.flushing = true;
+
+        Ok(())
+    }
+
+    fn unlock_stop(&self) -> Result<(), gst::ErrorMessage> {
+        // This signals that unlocking is done, so we can reset
+        // all values again.
+        gst::debug!(CAT, imp: self, "Unlock stop");
+        let mut clock_wait = self.clock_wait.lock().unwrap();
+        clock_wait.flushing = false;
+
+        Ok(())
+    }
 }
 
 impl PushSrcImpl for KlvTestSrc {
@@ -154,6 +251,10 @@ impl PushSrcImpl for KlvTestSrc {
         let count = self
             .count
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let (fps, is_live) = {
+            let settings = self.settings.read().unwrap();
+            (settings.fps.numer(), settings.is_live)
+        };
         let meta = ExampleRsMetaParams::new(
             "KlvTestSrcLabel".to_string(),
             count,
@@ -168,58 +269,63 @@ impl PushSrcImpl for KlvTestSrc {
             klv::encode(&mut bw, &records).unwrap();
         }
 
-        // let (clock, base_time) = match Option::zip(self.obj().clock(), self.obj().base_time()) {
-        //     None => return Ok(CreateSuccess::NewBuffer(buffer)),
-        //     Some(res) => res,
-        // };
-        // 後段がsync=trueならこれが意味を持つ
         // fractionから設定可能にしたい
+        let timeoffset = gst::ClockTime::SECOND / fps as u64;
         {
             let buffer = buffer.get_mut().unwrap();
-            buffer.set_pts(Some(gst::ClockTime::SECOND * count as u64));
-            buffer.set_dts(None);
-            buffer.set_duration(Some(gst::ClockTime::SECOND));
+            buffer.set_pts(Some(timeoffset * count as u64));
+            buffer.set_duration(Some(timeoffset));
         }
-        // let segment = self
-        //     .obj()
-        //     .segment()
-        //     .downcast::<gst::format::Time>()
-        //     .unwrap();
-        // let running_time = segment.to_running_time(buffer.pts().opt_add(buffer.duration()));
 
-        // let wait_until = match running_time.opt_add(base_time) {
-        //     Some(wait_until) => wait_until,
-        //     None => return Ok(CreateSuccess::NewBuffer(buffer)),
-        // };
-        // let mut clock_wait = self.clock_wait.lock().unwrap();
-        // if clock_wait.flushing {
-        //     gst::debug!(CAT, imp: self, "Flushing");
-        //     return Err(gst::FlowError::Flushing);
-        // }
+        // リアルタイム処理の場合
+        if is_live {
+            let (clock, base_time) = match Option::zip(self.obj().clock(), self.obj().base_time()) {
+                None => return Ok(CreateSuccess::NewBuffer(buffer)),
+                Some(res) => res,
+            };
+            // シーク可能なセグメント生成
+            let segment = self
+                .obj()
+                .segment()
+                .downcast::<gst::format::Time>()
+                .unwrap();
+            let running_time = segment.to_running_time(buffer.pts().opt_add(buffer.duration()));
 
-        // let id = clock.new_single_shot_id(wait_until);
-        // clock_wait.clock_id = Some(id.clone());
-        // drop(clock_wait);
+            // 待ち時間作成
+            let wait_until = match running_time.opt_add(base_time) {
+                Some(wait_until) => wait_until,
+                None => return Ok(CreateSuccess::NewBuffer(buffer)),
+            };
 
-        // gst::log!(
-        //     CAT,
-        //     imp: self,
-        //     "Waiting until {}, now {}",
-        //     wait_until,
-        //     clock.time().unwrap().display(),
-        // );
-        // let (res, jitter) = id.wait();
-        // gst::log!(CAT, imp: self, "Waited res {:?} jitter {}", res, jitter);
-        // self.clock_wait.lock().unwrap().clock_id.take();
+            // 実時間を待つ
+            let mut clock_wait = self.clock_wait.lock().unwrap();
+            // gst-plugin-rsのsinesrcでは存在するがデフォルトflushing=trueなので常に終了してしまうためコメントアウトしている
+            // if clock_wait.flushing {
+            //     gst::debug!(CAT, imp: self, "clock_wait Flushing");
+            //     return Err(gst::FlowError::Flushing);
+            // }
 
-        // // If the clock ID was unscheduled, unlock() was called
-        // // and we should return Flushing immediately.
-        // if res == Err(gst::ClockError::Unscheduled) {
-        //     gst::debug!(CAT, imp: self, "Flushing");
-        //     return Err(gst::FlowError::Flushing);
-        // }
+            // タイマー設定
+            let id = clock.new_single_shot_id(wait_until);
+            clock_wait.clock_id = Some(id.clone());
+            drop(clock_wait);
+            gst::log!(
+                CAT,
+                imp: self,
+                "Waiting until {}, now {}",
+                wait_until,
+                clock.time().unwrap().display(),
+            );
+            let (res, jitter) = id.wait();
+            gst::log!(CAT, imp: self, "Waited res {:?} jitter {}", res, jitter);
+            self.clock_wait.lock().unwrap().clock_id.take();
+            if res == Err(gst::ClockError::Unscheduled) {
+                gst::debug!(CAT, imp: self, "Flushing");
+                return Err(gst::FlowError::Flushing);
+            }
+        }
 
-        // gst::debug!(CAT, imp: self, "Produced buffer {:?}", buffer);
+        gst::debug!(CAT, imp: self, "Produced buffer {:?}", buffer);
 
         Ok(CreateSuccess::NewBuffer(buffer))
     }
