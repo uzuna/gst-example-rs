@@ -1,12 +1,18 @@
+use std::sync::Mutex;
+
+use ers_meta::ExampleRsMeta;
 use gst::glib;
-use gst::prelude::{ElementClassExt, PadExtManual};
+use gst::prelude::{ElementClassExt, ElementExtManual, PadExtManual};
 use gst::subclass::prelude::{
     ElementImpl, ElementImplExt, GstObjectImpl, ObjectImpl, ObjectImplExt, ObjectSubclass,
     ObjectSubclassExt,
 };
-use gst::traits::ElementExt;
+use gst::traits::{ElementExt, PadExt};
 use gst::Caps;
+use gst_base::UniqueFlowCombiner;
 use once_cell::sync::Lazy;
+
+use crate::metaklv::encode_klv;
 
 use super::CLASS_NAME;
 use super::ELEMENT_NAME;
@@ -28,7 +34,8 @@ pub static KLV_CAPS: Lazy<Caps> = Lazy::new(|| {
 pub struct MetaDemux {
     sinkpad: gst::Pad,
     srcpad: gst::Pad,
-    // klvsrcpad: Mutex<Option<gst::Pad>>,
+    klvsrcpad: Mutex<Option<gst::Pad>>,
+    flow_combiner: Mutex<UniqueFlowCombiner>,
 }
 
 impl MetaDemux {
@@ -38,7 +45,9 @@ impl MetaDemux {
         buffer: gst::Buffer,
     ) -> Result<gst::FlowSuccess, gst::FlowError> {
         gst::trace!(CAT, obj: pad, "Handling buffer {:?}", buffer);
-        self.srcpad.push(buffer)
+        // let res = self.srcpad.push(buffer);
+        // self.flow_combiner.lock().unwrap().update_flow(res)
+        self.sink_klv(buffer)
     }
 
     fn sink_event(&self, pad: &gst::Pad, event: gst::Event) -> bool {
@@ -57,6 +66,104 @@ impl MetaDemux {
     fn src_query(&self, pad: &gst::Pad, query: &mut gst::QueryRef) -> bool {
         gst::trace!(CAT, obj: pad, "Handling query {:?}", query);
         self.sinkpad.peer_query(query)
+    }
+    fn src_event_klv(&self, pad: &gst::Pad, event: gst::Event) -> bool {
+        gst::trace!(CAT, obj: pad, "Handling klv event {:?}", event);
+        gst::Pad::event_default(pad, Some(&*self.obj()), event)
+    }
+    fn src_query_klv(&self, pad: &gst::Pad, query: &mut gst::QueryRef) -> bool {
+        gst::trace!(CAT, obj: pad, "Handling klv query {:?}", query);
+        gst::Pad::query_default(pad, Some(&*self.obj()), query)
+    }
+
+    fn create_pad(&self) -> gst::Pad {
+        let name = "meta";
+        let templ = self.obj().element_class().pad_template(name).unwrap();
+        let srcpad = gst::Pad::builder_with_template(&templ, Some(name))
+            .event_function(|pad, parent, event| {
+                Self::catch_panic_pad_function(parent, || false, |mt| mt.src_event_klv(pad, event))
+            })
+            .query_function(|pad, parent, query| {
+                Self::catch_panic_pad_function(parent, || false, |mt| mt.src_query_klv(pad, query))
+            })
+            .build();
+
+        srcpad.set_active(true).unwrap();
+
+        let full_stream_id = srcpad.create_stream_id(&*self.obj(), Some(name));
+        gst::debug!(CAT, imp: self, "metapad stream_name ({:?})", full_stream_id);
+        let start_stream = gst::event::StreamStart::builder(&full_stream_id)
+            // .flags(StreamFlags::SPARSE)
+            .build();
+        srcpad.push_event(start_stream);
+        srcpad.push_event(gst::event::Caps::new(&KLV_CAPS));
+
+        let segment = gst::FormattedSegment::<gst::ClockTime>::default();
+        srcpad.push_event(gst::event::Segment::new(&segment));
+        self.flow_combiner.lock().unwrap().add_pad(&srcpad);
+        self.obj().add_pad(&srcpad).unwrap();
+
+        srcpad
+    }
+
+    fn sink_klv(&self, buffer: gst::Buffer) -> Result<gst::FlowSuccess, gst::FlowError> {
+        if let Some(meta) = buffer.meta::<ExampleRsMeta>() {
+            let klvpad = {
+                let mut klvpad = self.klvsrcpad.lock().unwrap();
+                if let Some(ref klvpad) = *klvpad {
+                    klvpad.clone()
+                } else {
+                    let srcpad = self.create_pad();
+                    *klvpad = Some(srcpad.clone());
+                    gst::info!(
+                        CAT,
+                        imp: self,
+                        "videopad stream_name ({:?})",
+                        self.srcpad.stream_id().unwrap()
+                    );
+
+                    srcpad
+                }
+            };
+            let records = encode_klv(&meta);
+            let size = klv::encode_len(&records);
+            let mut klvbuf = gst::Buffer::with_size(size).unwrap();
+            {
+                let mut bw = klvbuf.make_mut().map_writable().unwrap();
+                klv::encode(&mut bw, &records).unwrap();
+            }
+            {
+                let bufref = klvbuf.make_mut();
+                if let Some(pts) = buffer.pts() {
+                    bufref.set_pts(pts);
+                }
+                if let Some(dts) = buffer.dts() {
+                    bufref.set_dts(dts);
+                }
+                if let Some(dur) = buffer.duration() {
+                    bufref.set_duration(dur);
+                }
+            }
+            gst::info!(CAT, imp: self, "before push klv");
+            let res_klv = klvpad.push(klvbuf);
+            self.flow_combiner
+                .lock()
+                .unwrap()
+                .update_pad_flow(&klvpad, res_klv)?;
+            gst::info!(CAT, imp: self, "before push video");
+            let res_src = self.srcpad.push(buffer);
+            gst::info!(CAT, imp: self, "after push srcpad");
+            self.flow_combiner
+                .lock()
+                .unwrap()
+                .update_pad_flow(&self.srcpad, res_src)
+        } else {
+            let res = self.srcpad.push(buffer);
+            self.flow_combiner
+                .lock()
+                .unwrap()
+                .update_pad_flow(&self.srcpad, res)
+        }
     }
 }
 
@@ -157,6 +264,13 @@ impl ObjectSubclass for MetaDemux {
                 })
                 .build()
         };
-        Self { sinkpad, srcpad }
+        let mut flow_combiner = UniqueFlowCombiner::new();
+        flow_combiner.add_pad(&srcpad);
+        Self {
+            sinkpad,
+            srcpad,
+            klvsrcpad: Mutex::new(None),
+            flow_combiner: Mutex::new(flow_combiner),
+        }
     }
 }

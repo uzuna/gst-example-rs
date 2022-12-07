@@ -65,7 +65,7 @@ run.probecmd: build
 .PHONY: run.demux
 run.demux: build
 # パイプラインが2分岐するのでqueueが必要
-	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=1 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc ! metademux ! autovideosink
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=1 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc ! video/x-raw,framerate=5/1 ! metatrans name=addrs op=add ! metademux name=d ! autovideosink d. ! queue ! fakesink dump=true
 
 .PHONY: deb
 deb:
