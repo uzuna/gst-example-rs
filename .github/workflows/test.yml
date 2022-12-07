@@ -11,7 +11,7 @@ on:
     types: ["opened", "synchronize"]
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       - uses: awalsh128/cache-apt-pkgs-action@latest
@@ -44,7 +44,7 @@ jobs:
           retention-days: 1
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container:
       # go-bin-deb専用のコンテナ
       # TODO docker-hubではなくghcr.ioにからpullする
