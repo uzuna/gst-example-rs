@@ -41,14 +41,14 @@ enum Gst {
         #[structopt(flatten)]
         videocaps: VideoCapsOpt,
     },
-    /// run gstremer with gstreamer-rs
+    /// probe sample
     Probe {
         #[structopt(flatten)]
         testsrc: VideoTestSrcOpt,
         #[structopt(flatten)]
         videocaps: VideoCapsOpt,
     },
-    /// run gstremer with gstreamer-rs
+    /// probe tee
     ProbeTee {
         #[structopt(flatten)]
         testsrc: VideoTestSrcOpt,
