@@ -1,7 +1,6 @@
 use std::sync::Mutex;
 
 use ers_meta::ExampleRsMeta;
-use gst::glib;
 use gst::prelude::{ElementClassExt, ElementExtManual, PadExtManual};
 use gst::subclass::prelude::{
     ElementImpl, ElementImplExt, GstObjectImpl, ObjectImpl, ObjectImplExt, ObjectSubclass,
@@ -9,6 +8,7 @@ use gst::subclass::prelude::{
 };
 use gst::traits::{ElementExt, PadExt};
 use gst::Caps;
+use gst::{glib, EventView, Segment};
 use gst_base::UniqueFlowCombiner;
 use once_cell::sync::Lazy;
 
@@ -31,11 +31,19 @@ pub static KLV_CAPS: Lazy<Caps> = Lazy::new(|| {
         .build()
 });
 
+#[derive(Default)]
+pub struct State {
+    // x264encなどEncoderはDTS時間を確保するためPTSに大きなオフセットを持つ
+    // ソースのオフセットに合わせるためsegmentを保持してMetaKLVのsegmentがズレないようにする
+    segment: Segment,
+}
+
 pub struct MetaDemux {
     sinkpad: gst::Pad,
     srcpad: gst::Pad,
     klvsrcpad: Mutex<Option<gst::Pad>>,
     flow_combiner: Mutex<UniqueFlowCombiner>,
+    state: Mutex<State>,
 }
 
 impl MetaDemux {
@@ -47,13 +55,32 @@ impl MetaDemux {
         gst::trace!(CAT, obj: pad, "Handling buffer {:?}", buffer);
         // let res = self.srcpad.push(buffer);
         // self.flow_combiner.lock().unwrap().update_flow(res)
-        self.sink_klv(buffer)
+        let res = self.sink_klv(buffer);
+        gst::info!(CAT, imp: self, "after sink_chain");
+        res
     }
 
     fn sink_event(&self, pad: &gst::Pad, event: gst::Event) -> bool {
         gst::trace!(CAT, obj: pad, "Handling event {:?}", event);
         // klvにEoSとか一部は流したほうが良いのかも知れないがまだよく分かっていない
-        self.srcpad.push_event(event)
+        match event.type_() {
+            gst::EventType::Segment => {
+                gst::trace!(
+                    CAT,
+                    obj: pad,
+                    "Segment rtoffset {:?}",
+                    event.running_time_offset()
+                );
+                if let EventView::Segment(seg) = event.view() {
+                    gst::trace!(CAT, obj: pad, "Segment: {:?}", seg.segment());
+                    let mut state = self.state.lock().unwrap();
+                    state.segment = seg.segment().clone();
+                }
+                gst::Pad::event_default(pad, Some(&*self.obj()), event)
+            }
+            gst::EventType::Eos => gst::Pad::event_default(pad, Some(&*self.obj()), event),
+            _ => self.srcpad.push_event(event),
+        }
     }
     fn sink_query(&self, pad: &gst::Pad, query: &mut gst::QueryRef) -> bool {
         gst::trace!(CAT, obj: pad, "Handling query {:?}", query);
@@ -61,11 +88,13 @@ impl MetaDemux {
     }
     fn src_event(&self, pad: &gst::Pad, event: gst::Event) -> bool {
         gst::trace!(CAT, obj: pad, "Handling event {:?}", event);
-        self.sinkpad.push_event(event)
+        // self.sinkpad.push_event(event)
+        gst::Pad::event_default(pad, Some(&*self.obj()), event)
     }
     fn src_query(&self, pad: &gst::Pad, query: &mut gst::QueryRef) -> bool {
         gst::trace!(CAT, obj: pad, "Handling query {:?}", query);
         self.sinkpad.peer_query(query)
+        // gst::Pad::query_default(pad, Some(&*self.obj()), query)
     }
     fn src_event_klv(&self, pad: &gst::Pad, event: gst::Event) -> bool {
         gst::trace!(CAT, obj: pad, "Handling klv event {:?}", event);
@@ -98,10 +127,11 @@ impl MetaDemux {
         srcpad.push_event(start_stream);
         srcpad.push_event(gst::event::Caps::new(&KLV_CAPS));
 
-        let segment = gst::FormattedSegment::<gst::ClockTime>::default();
+        let segment = self.state.lock().unwrap().segment.clone();
+        gst::debug!(CAT, imp: self, "metapad segment ({:?})", &segment);
         srcpad.push_event(gst::event::Segment::new(&segment));
-        self.flow_combiner.lock().unwrap().add_pad(&srcpad);
         self.obj().add_pad(&srcpad).unwrap();
+        self.flow_combiner.lock().unwrap().add_pad(&srcpad);
 
         srcpad
     }
@@ -135,30 +165,33 @@ impl MetaDemux {
             {
                 let bufref = klvbuf.make_mut();
                 // PTSを設定するとx264encodingした場合にどこかで詰まる
-                // if let Some(pts) = buffer.pts() {
-                //     bufref.set_pts(pts);
-                // }
-                // if let Some(dts) = buffer.dts() {
-                //     bufref.set_dts(dts);
-                // }
-                // if let Some(dur) = buffer.duration() {
-                //     bufref.set_duration(dur);
-                // }
+                if let Some(pts) = buffer.pts() {
+                    gst::info!(CAT, imp: self, "pts {}", pts);
+                    bufref.set_pts(pts);
+                }
+                if let Some(dts) = buffer.dts() {
+                    bufref.set_dts(dts);
+                }
+                if let Some(dur) = buffer.duration() {
+                    bufref.set_duration(dur);
+                }
                 bufref.set_offset(buffer.offset());
             }
-            gst::info!(CAT, imp: self, "before push klv {}", buffer.offset());
-            let res_klv = klvpad.push(klvbuf);
-            self.flow_combiner
-                .lock()
-                .unwrap()
-                .update_pad_flow(&klvpad, res_klv)?;
             gst::info!(CAT, imp: self, "before push video {}", buffer.offset());
             let res_src = self.srcpad.push(buffer);
             gst::info!(CAT, imp: self, "after push srcpad");
             self.flow_combiner
                 .lock()
                 .unwrap()
-                .update_pad_flow(&self.srcpad, res_src)
+                .update_pad_flow(&self.srcpad, res_src)?;
+
+            gst::info!(CAT, imp: self, "before push klv");
+            let res_klv = klvpad.push(klvbuf);
+            gst::info!(CAT, imp: self, "after push klv");
+            self.flow_combiner
+                .lock()
+                .unwrap()
+                .update_pad_flow(&klvpad, res_klv)
         } else {
             let res = self.srcpad.push(buffer);
             self.flow_combiner
@@ -273,6 +306,7 @@ impl ObjectSubclass for MetaDemux {
             srcpad,
             klvsrcpad: Mutex::new(None),
             flow_combiner: Mutex::new(flow_combiner),
+            state: Mutex::new(State::default()),
         }
     }
 }

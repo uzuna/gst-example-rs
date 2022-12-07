@@ -62,10 +62,21 @@ run.probecmd: build
 
 
 # klv demux
+.PHONY: run.demux-noenc
+run.demux-noenc: build
+# no encoding
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG_FILE=gst.log GST_DEBUG=1,metademux:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc num-buffers=20 ! video/x-raw,framerate=5/1 ! metatrans name=addrs op=add ! metademux name=d ! queue ! autovideosink d. ! fakesink dump=true sync=true
+
+# klv demux
 .PHONY: run.demux
 run.demux: build
-# test encoding
-	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=1,metademux:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc ! video/x-raw,framerate=5/1 ! metatrans name=addrs op=add ! x264enc ! metademux name=d ! decodebin ! autovideosink d. ! queue ! fakesink dump=true
+# autovideosinkには流せないがfakesinkなら動く
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG_FILE=gst.log GST_DEBUG=1,metademux:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc num-buffers=20 ! video/x-raw,framerate=5/1 ! metatrans name=addrs op=add ! x264enc ! metademux name=d ! queue ! fakesink dump=true sync=true d. ! queue ! fakesink dump=true sync=true
+
+# klv demux
+.PHONY: run.demux-single
+run.demux-single: build
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=1,metademux:7,fakesink:7,mpegtsmux:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc num-buffers=10 ! video/x-raw,framerate=5/1 ! metatrans name=addrs op=add ! x264enc ! metademux name=d ! queue ! mpegtsmux name=m ! fakesink dump=true d. ! meta/x-klv ! m.
 
 .PHONY: deb
 deb:
