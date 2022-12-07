@@ -1,3 +1,5 @@
+use std::sync::RwLock;
+
 use gst::glib;
 use gst::glib::ParamFlags;
 use gst::prelude::ElementExtManual;
@@ -9,7 +11,6 @@ use gst::traits::ElementExt;
 use gst::Fraction;
 
 use once_cell::sync::Lazy;
-use parking_lot::RwLock;
 
 use super::CLASS_NAME;
 use super::ELEMENT_NAME;
@@ -50,7 +51,7 @@ impl ExampleTestSrc {
         addmeta.set_property_from_str("op", "add");
 
         let caps = {
-            let settings = self.settings.read();
+            let settings = self.settings.read().unwrap();
             gst::Caps::builder("video/x-raw")
                 .field("width", 600)
                 .field("height", 400)
@@ -156,7 +157,7 @@ impl ObjectImpl for ExampleTestSrc {
             "fps" => {
                 let x: Fraction = value.get().expect("type checkd upstream");
                 gst::info!(CAT, imp: self, "set prop fps to {}", &x);
-                let mut settings = self.settings.write();
+                let mut settings = self.settings.write().unwrap();
                 settings.fps = x;
             }
             _ => unimplemented!(),
@@ -166,7 +167,7 @@ impl ObjectImpl for ExampleTestSrc {
     fn property(&self, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
         match pspec.name() {
             "fps" => {
-                let settings = self.settings.read();
+                let settings = self.settings.read().unwrap();
                 settings.fps.to_value()
             }
             _ => unimplemented!(),

@@ -8,3 +8,8 @@ pkg-build
 artifacts
 
 *.dot
+*.txt
+*.webm
+testdata
+*.log
+*.m2ts
