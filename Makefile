@@ -56,7 +56,6 @@ run.play_klvts: build
 run.probe: build
 	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_PLUGIN_PATH=${RUST_OUT_DIR} GST_DEBUG=decodebin:7,autovideosink:7 cargo run probe --fps 5
 
-
 .PHONY: run.probecmd
 run.probecmd: build
 	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_PLUGIN_PATH=${RUST_OUT_DIR} gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc ! video/x-raw,framerate=30/1 ! x264enc ! mpegtsmux name=m ! tsdemux ! decodebin ! autovideosink klvtestsrc fps=10 ! m.

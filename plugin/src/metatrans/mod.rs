@@ -4,7 +4,7 @@ use gst::glib;
 use gst::prelude::*;
 
 const ELEMENT_NAME: &str = "metatrans";
-const CLASS_NAME: &str = "MestTrans";
+const CLASS_NAME: &str = "MetaTrans";
 
 mod imp;
 
