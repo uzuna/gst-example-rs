@@ -52,6 +52,15 @@ run.save_klvts: build
 run.play_klvts: build
 	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=3 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} filesrc location=test.m2ts ! tsdemux name=t ! video/x-h264 ! decodebin ! autovideosink t. ! meta/x-klv,parsed=true ! queue ! fakesink dump=true 
 
+.PHONY: run.probe
+run.probe: build
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_PLUGIN_PATH=${RUST_OUT_DIR} GST_DEBUG=decodebin:7,autovideosink:7 cargo run probe
+
+
+.PHONY: run.probecmd
+run.probecmd: build
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_PLUGIN_PATH=${RUST_OUT_DIR} gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc ! video/x-raw,framerate=30/1 ! x264enc ! mpegtsmux name=m ! tsdemux ! decodebin ! autovideosink klvtestsrc fps=10 ! m.
+
 .PHONY: deb
 deb:
 	make -C plugin deb

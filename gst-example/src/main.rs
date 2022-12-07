@@ -9,6 +9,7 @@ use structopt::{clap::arg_enum, StructOpt};
 
 // #[cfg(gst_app)]
 mod app;
+mod probe;
 
 #[derive(Debug, StructOpt)]
 enum Gst {
@@ -37,6 +38,13 @@ enum Gst {
     },
     /// use gstbin
     GstBin {
+        #[structopt(flatten)]
+        videocaps: VideoCapsOpt,
+    },
+    /// run gstremer with gstreamer-rs
+    Probe {
+        #[structopt(flatten)]
+        testsrc: VideoTestSrcOpt,
         #[structopt(flatten)]
         videocaps: VideoCapsOpt,
     },
@@ -251,6 +259,13 @@ fn main() {
         }
         Gst::GstBin { videocaps } => {
             let pipeline = build_bin(&videocaps).expect("failed to build gst run pipeline");
+            if let Err(e) = run_pipeline(pipeline) {
+                log::error!("gstream error: {:?}", e);
+            }
+        }
+        Gst::Probe { testsrc, videocaps } => {
+            let pipeline = probe::build_pipeline(&testsrc, &videocaps)
+                .expect("failed to build gst run pipeline");
             if let Err(e) = run_pipeline(pipeline) {
                 log::error!("gstream error: {:?}", e);
             }
