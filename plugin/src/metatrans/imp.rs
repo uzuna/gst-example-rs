@@ -1,8 +1,8 @@
 use std::sync::atomic::AtomicI32;
+use std::sync::RwLock;
 
 use ec_meta::{ExampleCMeta, ExampleCMetaParams};
 use gst::traits::GstObjectExt;
-use parking_lot::RwLock;
 
 use ers_meta::{ExampleRsMeta, ExampleRsMetaParams, TransformMode};
 use gst::glib::{self, ParamFlags};
@@ -209,13 +209,13 @@ impl ObjectImpl for MetaTrans {
             "op" => {
                 let x: String = value.get().expect("type checked upstream");
                 gst::info!(CAT, imp: self, "set prop op to {}", &x);
-                let mut settings = self.settings.write();
+                let mut settings = self.settings.write().unwrap();
                 settings.set_op_mode(&x).expect("set op mode");
             }
             "tmethod" => {
                 let x: String = value.get().expect("type checked upstream");
                 gst::info!(CAT, imp: self, "set tmethod to {}", &x);
-                let mut settings = self.settings.write();
+                let mut settings = self.settings.write().unwrap();
                 settings
                     .set_transform_method(&x)
                     .expect("set transform method");
@@ -223,7 +223,7 @@ impl ObjectImpl for MetaTrans {
             "mtype" => {
                 let x: String = value.get().expect("type checked upstream");
                 gst::info!(CAT, imp: self, "set metatype to {}", &x);
-                let mut settings = self.settings.write();
+                let mut settings = self.settings.write().unwrap();
                 settings.set_meta_type(&x).expect("set metatype");
             }
             _ => unimplemented!(),
@@ -235,15 +235,15 @@ impl ObjectImpl for MetaTrans {
     fn property(&self, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
         match pspec.name() {
             "op" => {
-                let settings = self.settings.read();
+                let settings = self.settings.read().unwrap();
                 settings.op_mode.as_ref().to_value()
             }
             "tmethod" => {
-                let settings = self.settings.read();
+                let settings = self.settings.read().unwrap();
                 settings.transform_meta.as_ref().to_value()
             }
             "mtype" => {
-                let settings = self.settings.read();
+                let settings = self.settings.read().unwrap();
                 settings.meta_type.as_ref().to_value()
             }
             _ => unimplemented!(),
@@ -271,7 +271,7 @@ impl BaseTransformImpl for MetaTrans {
         buffer: &mut gst::BufferRef,
     ) -> Result<gst::FlowSuccess, gst::FlowError> {
         let (op_mode, transform_meta, meta_type) = {
-            let settings = self.settings.read();
+            let settings = self.settings.read().unwrap();
             (
                 settings.op_mode,
                 settings.transform_meta,

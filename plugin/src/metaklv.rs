@@ -60,6 +60,7 @@ impl DataSet for ExampleDataset {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn encode_klv(meta: &ExampleRsMeta) -> Vec<(ExampleDataset, Value)> {
     vec![
         (ExampleDataset::Mode, Value::U16(meta.mode() as u16)),
@@ -86,7 +87,7 @@ pub(crate) fn encode_klv_params(params: &ExampleRsMetaParams) -> Vec<(ExampleDat
 mod tests {
     use klv::{encode, encode_len, KLVGlobal, KLVReader};
 
-    use crate::metatrans::metaklv::{ExampleDataset, Value};
+    use super::{ExampleDataset, Value};
 
     #[test]
     fn test_encode() {

@@ -4,6 +4,7 @@ use gst::glib;
 
 mod exampletestsrc;
 mod klvtestsrc;
+mod metaklv;
 mod metatrans;
 mod testtrans;
 

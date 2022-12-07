@@ -1,25 +1,23 @@
-use std::sync::atomic::AtomicI32;
+use std::sync::atomic::AtomicU64;
 use std::sync::{Mutex, RwLock};
 
 use ers_meta::ExampleRsMetaParams;
 use gst::glib::ParamFlags;
 use gst::prelude::{
-    ClockExtManual, Displayable, ElementExtManual, GObjectExtManualGst, GstParamSpecBuilderExt,
-    OptionAdd, ParamSpecBuilderExt, ToValue,
+    ClockExtManual, Displayable, GstParamSpecBuilderExt, OptionAdd, ParamSpecBuilderExt, ToValue,
 };
 use gst::subclass::prelude::*;
 use gst::traits::{ClockExt, ElementExt};
-use gst::{glib, Caps};
-use gst::{ClockTime, Fraction};
+use gst::{glib, Caps, Fraction};
 
 use gst_base::prelude::BaseSrcExtManual;
 use gst_base::subclass::base_src::CreateSuccess;
-use gst_base::subclass::prelude::{BaseSrcImpl, BaseSrcImplExt, PushSrcImpl};
+use gst_base::subclass::prelude::{BaseSrcImpl, PushSrcImpl};
 use gst_base::traits::BaseSrcExt;
-use gst_base::PushSrc;
+
 use once_cell::sync::Lazy;
 
-use crate::metatrans::metaklv::encode_klv_params;
+use crate::metaklv::encode_klv_params;
 
 use super::CLASS_NAME;
 use super::ELEMENT_NAME;
@@ -57,21 +55,22 @@ impl Default for Settings {
 
 struct ClockWait {
     clock_id: Option<gst::SingleShotClockId>,
-    flushing: bool,
+    // flushing: bool,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for ClockWait {
     fn default() -> ClockWait {
         ClockWait {
             clock_id: None,
-            flushing: true,
+            // flushing: true,
         }
     }
 }
 
 #[derive(Default)]
 pub struct KlvTestSrc {
-    count: AtomicI32,
+    count: AtomicU64,
     clock_wait: Mutex<ClockWait>,
     settings: RwLock<Settings>,
 }
@@ -207,40 +206,7 @@ impl ObjectSubclass for KlvTestSrc {
     type ParentType = gst_base::PushSrc;
 }
 
-impl BaseSrcImpl for KlvTestSrc {
-    fn set_caps(&self, caps: &gst::Caps) -> Result<(), gst::LoggableError> {
-        gst::debug!(CAT, imp: self, "Configuring for caps {}", caps);
-
-        let _ = self
-            .obj()
-            .post_message(gst::message::Latency::builder().src(&*self.obj()).build());
-
-        Ok(())
-    }
-
-    fn unlock(&self) -> Result<(), gst::ErrorMessage> {
-        // This should unblock the create() function ASAP, so we
-        // just unschedule the clock it here, if any.
-        gst::debug!(CAT, imp: self, "Unlocking");
-        let mut clock_wait = self.clock_wait.lock().unwrap();
-        if let Some(clock_id) = clock_wait.clock_id.take() {
-            clock_id.unschedule();
-        }
-        clock_wait.flushing = true;
-
-        Ok(())
-    }
-
-    fn unlock_stop(&self) -> Result<(), gst::ErrorMessage> {
-        // This signals that unlocking is done, so we can reset
-        // all values again.
-        gst::debug!(CAT, imp: self, "Unlock stop");
-        let mut clock_wait = self.clock_wait.lock().unwrap();
-        clock_wait.flushing = false;
-
-        Ok(())
-    }
-}
+impl BaseSrcImpl for KlvTestSrc {}
 
 impl PushSrcImpl for KlvTestSrc {
     fn create(
@@ -257,7 +223,7 @@ impl PushSrcImpl for KlvTestSrc {
         };
         let meta = ExampleRsMetaParams::new(
             "KlvTestSrcLabel".to_string(),
-            count,
+            (count % i32::MAX as u64) as i32,
             ers_meta::TransformMode::Copy,
         );
         let records = encode_klv_params(&meta);
@@ -273,8 +239,9 @@ impl PushSrcImpl for KlvTestSrc {
         let timeoffset = gst::ClockTime::SECOND / fps as u64;
         {
             let buffer = buffer.get_mut().unwrap();
-            buffer.set_pts(Some(timeoffset * count as u64));
+            buffer.set_pts(Some(timeoffset * count));
             buffer.set_duration(Some(timeoffset));
+            buffer.set_offset(count)
         }
 
         // リアルタイム処理の場合

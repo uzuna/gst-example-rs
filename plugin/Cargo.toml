@@ -18,7 +18,6 @@ once_cell = "1.0"
 strum = { version = "0.24.1", features = ["derive"] }
 ers_meta = { package = "example-rs-sys",  path = "../meta/example-rs-sys"}
 ec_meta = { package = "example-c-sys",  path = "../meta/example-c-sys"}
-parking_lot = "0.12.1"
 klv = { package="klv", git = "https://github.com/uzuna/mpegts_learn", branch = "feature/klv_default" }
 
 [build-dependencies]
