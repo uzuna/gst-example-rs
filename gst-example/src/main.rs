@@ -9,6 +9,7 @@ use structopt::{clap::arg_enum, StructOpt};
 
 // #[cfg(gst_app)]
 mod app;
+mod probe;
 
 #[derive(Debug, StructOpt)]
 enum Gst {
@@ -40,12 +41,30 @@ enum Gst {
         #[structopt(flatten)]
         videocaps: VideoCapsOpt,
     },
+    /// probe sample
+    Probe {
+        #[structopt(flatten)]
+        testsrc: VideoTestSrcOpt,
+        #[structopt(flatten)]
+        videocaps: VideoCapsOpt,
+    },
+    /// probe tee
+    ProbeTee {
+        #[structopt(flatten)]
+        testsrc: VideoTestSrcOpt,
+        #[structopt(flatten)]
+        videocaps: VideoCapsOpt,
+        #[structopt(long)]
+        usequeue: bool,
+    },
 }
 
 #[derive(Debug, StructOpt)]
 struct VideoTestSrcOpt {
     #[structopt(default_value, long, possible_values = &VideoTestSrcPattern::variants())]
     pattern: VideoTestSrcPattern,
+    #[structopt(default_value = "-1", long)]
+    num_buffers: i64,
 }
 
 impl VideoTestSrcOpt {
@@ -54,6 +73,10 @@ impl VideoTestSrcOpt {
     }
     fn set_properties(&self, e: &Element) {
         e.set_property_from_str("pattern", format!("{}", self.pattern as u32).as_str());
+        e.set_property_from_str(
+            "num-buffers",
+            format!("{}", self.num_buffers as u32).as_str(),
+        );
     }
 }
 
@@ -194,7 +217,17 @@ fn run_pipeline(pipeline: gst::Pipeline) -> Result<(), anyhow::Error> {
                 }
                 .into());
             }
-            _ => (),
+            MessageView::StateChanged(x) => {
+                log::debug!(
+                    "state-changed [{}] {:?} -> {:?}",
+                    x.src().unwrap().name(),
+                    x.old(),
+                    x.current()
+                );
+            }
+            x => {
+                log::debug!("message {:?}", x);
+            }
         }
     }
 
@@ -251,6 +284,24 @@ fn main() {
         }
         Gst::GstBin { videocaps } => {
             let pipeline = build_bin(&videocaps).expect("failed to build gst run pipeline");
+            if let Err(e) = run_pipeline(pipeline) {
+                log::error!("gstream error: {:?}", e);
+            }
+        }
+        Gst::Probe { testsrc, videocaps } => {
+            let pipeline = probe::build_pipeline(&testsrc, &videocaps)
+                .expect("failed to build gst run pipeline");
+            if let Err(e) = run_pipeline(pipeline) {
+                log::error!("gstream error: {:?}", e);
+            }
+        }
+        Gst::ProbeTee {
+            testsrc,
+            videocaps,
+            usequeue,
+        } => {
+            let pipeline = probe::build_tee_probe(&testsrc, &videocaps, usequeue)
+                .expect("failed to build gst run pipeline");
             if let Err(e) = run_pipeline(pipeline) {
                 log::error!("gstream error: {:?}", e);
             }
