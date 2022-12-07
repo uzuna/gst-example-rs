@@ -60,6 +60,13 @@ run.probe: build
 run.probecmd: build
 	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_PLUGIN_PATH=${RUST_OUT_DIR} gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc ! video/x-raw,framerate=30/1 ! x264enc ! mpegtsmux name=m ! tsdemux ! decodebin ! autovideosink klvtestsrc fps=10 ! m.
 
+
+# klv demux
+.PHONY: run.demux
+run.demux: build
+# パイプラインが2分岐するのでqueueが必要
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=1 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc ! metademux ! autovideosink
+
 .PHONY: deb
 deb:
 	make -C plugin deb

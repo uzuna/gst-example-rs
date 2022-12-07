@@ -1,5 +1,10 @@
 use gst::glib;
-use gst::subclass::prelude::{ElementImpl, GstObjectImpl, ObjectImpl, ObjectSubclass};
+use gst::prelude::{ElementClassExt, PadExtManual};
+use gst::subclass::prelude::{
+    ElementImpl, ElementImplExt, GstObjectImpl, ObjectImpl, ObjectImplExt, ObjectSubclass,
+    ObjectSubclassExt,
+};
+use gst::traits::ElementExt;
 use gst::Caps;
 use once_cell::sync::Lazy;
 
@@ -20,8 +25,40 @@ pub static KLV_CAPS: Lazy<Caps> = Lazy::new(|| {
         .build()
 });
 
-#[derive(Default)]
-pub struct MetaDemux {}
+pub struct MetaDemux {
+    sinkpad: gst::Pad,
+    srcpad: gst::Pad,
+    // klvsrcpad: Mutex<Option<gst::Pad>>,
+}
+
+impl MetaDemux {
+    fn sink_chain(
+        &self,
+        pad: &gst::Pad,
+        buffer: gst::Buffer,
+    ) -> Result<gst::FlowSuccess, gst::FlowError> {
+        gst::trace!(CAT, obj: pad, "Handling buffer {:?}", buffer);
+        self.srcpad.push(buffer)
+    }
+
+    fn sink_event(&self, pad: &gst::Pad, event: gst::Event) -> bool {
+        gst::trace!(CAT, obj: pad, "Handling event {:?}", event);
+        // klvにEoSとか一部は流したほうが良いのかも知れないがまだよく分かっていない
+        self.srcpad.push_event(event)
+    }
+    fn sink_query(&self, pad: &gst::Pad, query: &mut gst::QueryRef) -> bool {
+        gst::trace!(CAT, obj: pad, "Handling query {:?}", query);
+        self.srcpad.peer_query(query)
+    }
+    fn src_event(&self, pad: &gst::Pad, event: gst::Event) -> bool {
+        gst::trace!(CAT, obj: pad, "Handling event {:?}", event);
+        self.sinkpad.push_event(event)
+    }
+    fn src_query(&self, pad: &gst::Pad, query: &mut gst::QueryRef) -> bool {
+        gst::trace!(CAT, obj: pad, "Handling query {:?}", query);
+        self.sinkpad.peer_query(query)
+    }
+}
 
 impl ElementImpl for MetaDemux {
     fn metadata() -> Option<&'static gst::subclass::ElementMetadata> {
@@ -72,7 +109,16 @@ impl ElementImpl for MetaDemux {
         PAD_TEMPLATES.as_ref()
     }
 }
-impl ObjectImpl for MetaDemux {}
+
+impl ObjectImpl for MetaDemux {
+    fn constructed(&self) {
+        self.parent_constructed();
+
+        let obj = self.obj();
+        obj.add_pad(&self.sinkpad).unwrap();
+        obj.add_pad(&self.srcpad).unwrap();
+    }
+}
 impl GstObjectImpl for MetaDemux {}
 
 #[glib::object_subclass]
@@ -80,4 +126,37 @@ impl ObjectSubclass for MetaDemux {
     const NAME: &'static str = CLASS_NAME;
     type Type = super::MetaDemux;
     type ParentType = gst::Element;
+
+    fn with_class(klass: &Self::Class) -> Self {
+        let sinkpad = {
+            let templ = klass.pad_template("sink").unwrap();
+            gst::Pad::builder_with_template(&templ, Some("sink"))
+                .chain_function(|pad, parent, buffer| {
+                    Self::catch_panic_pad_function(
+                        parent,
+                        || Err(gst::FlowError::Error),
+                        |mt| mt.sink_chain(pad, buffer),
+                    )
+                })
+                .event_function(|pad, parent, event| {
+                    Self::catch_panic_pad_function(parent, || false, |mt| mt.sink_event(pad, event))
+                })
+                .query_function(|pad, parent, query| {
+                    Self::catch_panic_pad_function(parent, || false, |mt| mt.sink_query(pad, query))
+                })
+                .build()
+        };
+        let srcpad = {
+            let templ = klass.pad_template("src").unwrap();
+            gst::Pad::builder_with_template(&templ, Some("src"))
+                .event_function(|pad, parent, event| {
+                    Self::catch_panic_pad_function(parent, || false, |mt| mt.src_event(pad, event))
+                })
+                .query_function(|pad, parent, query| {
+                    Self::catch_panic_pad_function(parent, || false, |mt| mt.src_query(pad, query))
+                })
+                .build()
+        };
+        Self { sinkpad, srcpad }
+    }
 }
