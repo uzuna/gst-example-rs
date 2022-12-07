@@ -1,5 +1,7 @@
 use gst::{
-    prelude::{ElementExtManual, GstBinExtManual, PadExtManual},
+    prelude::{
+        ElementExtManual, GObjectExtManualGst, GstBinExtManual, ObjectExt, PadExtManual,
+    },
     traits::{ElementExt, GstObjectExt, PadExt},
     PadProbeType, Pipeline,
 };
@@ -32,6 +34,7 @@ pub(crate) fn build_pipeline(
     ])?;
     // attach caps
     videosrc.link_filtered(&x264enc, &videocaps.get_caps())?;
+    klvsrc.set_property_from_str("fps", &format!("{}", videocaps.fps));
     gst::Element::link_many(&[&tsmux, &tsdemux])?;
     gst::Element::link_many(&[&h264parse, &decodebin, &vconv, &sink])?;
 

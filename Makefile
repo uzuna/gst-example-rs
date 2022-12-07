@@ -54,7 +54,7 @@ run.play_klvts: build
 
 .PHONY: run.probe
 run.probe: build
-	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_PLUGIN_PATH=${RUST_OUT_DIR} GST_DEBUG=decodebin:7,autovideosink:7 cargo run probe
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_PLUGIN_PATH=${RUST_OUT_DIR} GST_DEBUG=decodebin:7,autovideosink:7 cargo run probe --fps 5
 
 
 .PHONY: run.probecmd
