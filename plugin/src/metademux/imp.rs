@@ -134,23 +134,25 @@ impl MetaDemux {
             }
             {
                 let bufref = klvbuf.make_mut();
-                if let Some(pts) = buffer.pts() {
-                    bufref.set_pts(pts);
-                }
-                if let Some(dts) = buffer.dts() {
-                    bufref.set_dts(dts);
-                }
-                if let Some(dur) = buffer.duration() {
-                    bufref.set_duration(dur);
-                }
+                // PTSを設定するとx264encodingした場合にどこかで詰まる
+                // if let Some(pts) = buffer.pts() {
+                //     bufref.set_pts(pts);
+                // }
+                // if let Some(dts) = buffer.dts() {
+                //     bufref.set_dts(dts);
+                // }
+                // if let Some(dur) = buffer.duration() {
+                //     bufref.set_duration(dur);
+                // }
+                bufref.set_offset(buffer.offset());
             }
-            gst::info!(CAT, imp: self, "before push klv");
+            gst::info!(CAT, imp: self, "before push klv {}", buffer.offset());
             let res_klv = klvpad.push(klvbuf);
             self.flow_combiner
                 .lock()
                 .unwrap()
                 .update_pad_flow(&klvpad, res_klv)?;
-            gst::info!(CAT, imp: self, "before push video");
+            gst::info!(CAT, imp: self, "before push video {}", buffer.offset());
             let res_src = self.srcpad.push(buffer);
             gst::info!(CAT, imp: self, "after push srcpad");
             self.flow_combiner
