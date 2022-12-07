@@ -83,14 +83,23 @@ pub(crate) fn build_tee_probe(
     let pipeline = gst::Pipeline::new(None);
     let videosrc = gst::ElementFactory::make("videotestsrc").build()?;
     let tee = gst::ElementFactory::make("tee").build()?;
+    let conv = gst::ElementFactory::make("videoconvert").build()?;
+    let scale = gst::ElementFactory::make("videoscale").build()?;
     let sink = gst::ElementFactory::make("autovideosink").build()?;
     let sink2 = gst::ElementFactory::make("autovideosink").build()?;
     testsrc.set_properties(&videosrc);
 
     // add to pipeline and link elements
-    pipeline.add_many(&[&videosrc, &tee, &sink, &sink2])?;
+    pipeline.add_many(&[&videosrc, &tee, &conv, &scale, &sink, &sink2])?;
     // attach caps
     videosrc.link_filtered(&tee, &videocaps.get_caps())?;
+    scale.link_filtered(
+        &conv,
+        &gst::Caps::builder("video/x-raw")
+            .field("width", 100)
+            .field("height", 100)
+            .build(),
+    )?;
 
     let v_src = videosrc.static_pad("src").unwrap();
     let tee_sink = tee.static_pad("sink").unwrap();
@@ -100,13 +109,34 @@ pub(crate) fn build_tee_probe(
     let sinkpad1 = sink.static_pad("sink").unwrap();
     let sinkpad2 = sink2.static_pad("sink").unwrap();
 
+    sinkpad1.add_probe(PadProbeType::BLOCK, |_, pbi| {
+        show_probe("sinkpad1", &pbi.data);
+        gst::PadProbeReturn::Pass
+    });
+    sinkpad2.add_probe(PadProbeType::BLOCK, |_, pbi| {
+        show_probe("sinkpad2", &pbi.data);
+        gst::PadProbeReturn::Pass
+    });
+    let scale_sink = scale.static_pad("sink").unwrap();
+    let conv_src = conv.static_pad("src").unwrap();
+    conv_src.link(&sinkpad1)?;
+
+    scale_sink.add_probe(PadProbeType::BLOCK, |_, pbi| {
+        show_probe("scale_sink", &pbi.data);
+        gst::PadProbeReturn::Pass
+    });
+    conv_src.add_probe(PadProbeType::BLOCK, |_, pbi| {
+        show_probe("conv_src", &pbi.data);
+        gst::PadProbeReturn::Pass
+    });
+
     if usequeue {
         let queue1 = gst::ElementFactory::make("queue").build()?;
         pipeline.add_many(&[&queue1])?;
         let q1_src = queue1.static_pad("src").unwrap();
         let q1_sink = queue1.static_pad("sink").unwrap();
         tee_src1.link(&q1_sink)?;
-        q1_src.link(&sinkpad1)?;
+        q1_src.link(&scale_sink)?;
         tee_src2.link(&sinkpad2)?;
 
         q1_src.add_probe(PadProbeType::BLOCK, |_, pbi| {
@@ -126,7 +156,7 @@ pub(crate) fn build_tee_probe(
             gst::PadProbeReturn::Pass
         });
     } else {
-        tee_src1.link(&sinkpad1)?;
+        tee_src1.link(&scale_sink)?;
         tee_src2.link(&sinkpad2)?;
         tee_src1.add_probe(PadProbeType::BLOCK, |_, pbi| {
             show_probe("tee_src1", &pbi.data);
@@ -144,14 +174,6 @@ pub(crate) fn build_tee_probe(
     });
     tee_sink.add_probe(PadProbeType::BLOCK, |_, pbi| {
         show_probe("tee_sink", &pbi.data);
-        gst::PadProbeReturn::Pass
-    });
-    sinkpad1.add_probe(PadProbeType::BLOCK, |_, pbi| {
-        show_probe("sinkpad1", &pbi.data);
-        gst::PadProbeReturn::Pass
-    });
-    sinkpad2.add_probe(PadProbeType::BLOCK, |_, pbi| {
-        show_probe("sinkpad2", &pbi.data);
         gst::PadProbeReturn::Pass
     });
     Ok(pipeline)

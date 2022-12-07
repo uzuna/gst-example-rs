@@ -21,7 +21,7 @@ RUST_LOG=debug GST_DEBUG=xvimagesink:7 cargo run probe-tee --num-buffers 3 --use
 
 queueなしログを見るとsrcからsink1までのイベントがトリガーされて止まっている。
 tee2つ目のsrcが駆動されておらずsink2がPAUSEDにならない、するとパイプラインがPAUSEDにならないためPREROLLが終わらずPLAYINGにならない。
-分岐は深さ方向に進んだあと横に展開するものと考えて組み立てる必要がありそう
+分岐は深さ方向に進んだあと横方向へ展開するものと考えて組み立てる必要がありそう
 
 #### qurue なし
 

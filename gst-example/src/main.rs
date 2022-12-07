@@ -217,6 +217,14 @@ fn run_pipeline(pipeline: gst::Pipeline) -> Result<(), anyhow::Error> {
                 }
                 .into());
             }
+            MessageView::StateChanged(x) => {
+                log::debug!(
+                    "state-changed [{}] {:?} -> {:?}",
+                    x.src().unwrap().name(),
+                    x.old(),
+                    x.current()
+                );
+            }
             x => {
                 log::debug!("message {:?}", x);
             }
