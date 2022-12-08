@@ -77,7 +77,7 @@ run.demux: build
 # klv demux
 .PHONY: run.demux-single
 run.demux-single: build
-	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=1,metademux:7,fakesink:7,mpegtsmux:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc num-buffers=10 ! video/x-raw,framerate=5/1 ! metatrans name=addrs op=add ! x264enc ! metademux name=d ! queue ! mpegtsmux name=m ! fakesink dump=true d. ! meta/x-klv ! m.
+	RUST_LOG=debug LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_PLUGIN_PATH=${RUST_OUT_DIR} GST_DEBUG=1,metademux:7 cargo run probe-tsdemux --fps 5
 
 .PHONY: deb
 deb:

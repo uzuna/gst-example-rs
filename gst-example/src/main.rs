@@ -57,6 +57,13 @@ enum Gst {
         #[structopt(long)]
         usequeue: bool,
     },
+    /// probe tsdemux
+    ProbeTsdemux {
+        #[structopt(flatten)]
+        testsrc: VideoTestSrcOpt,
+        #[structopt(flatten)]
+        videocaps: VideoCapsOpt,
+    },
 }
 
 #[derive(Debug, StructOpt)]
@@ -301,6 +308,13 @@ fn main() {
             usequeue,
         } => {
             let pipeline = probe::build_tee_probe(&testsrc, &videocaps, usequeue)
+                .expect("failed to build gst run pipeline");
+            if let Err(e) = run_pipeline(pipeline) {
+                log::error!("gstream error: {:?}", e);
+            }
+        }
+        Gst::ProbeTsdemux { testsrc, videocaps } => {
+            let pipeline = probe::build_demux_probe(&testsrc, &videocaps)
                 .expect("failed to build gst run pipeline");
             if let Err(e) = run_pipeline(pipeline) {
                 log::error!("gstream error: {:?}", e);
