@@ -56,7 +56,7 @@ impl MetaDemux {
         // let res = self.srcpad.push(buffer);
         // self.flow_combiner.lock().unwrap().update_flow(res)
         let res = self.sink_klv(buffer);
-        gst::info!(CAT, imp: self, "after sink_chain");
+        gst::trace!(CAT, imp: self, "after sink_chain");
         res
     }
 
@@ -145,7 +145,7 @@ impl MetaDemux {
                 } else {
                     let srcpad = self.create_pad();
                     *klvpad = Some(srcpad.clone());
-                    gst::info!(
+                    gst::trace!(
                         CAT,
                         imp: self,
                         "videopad stream_name ({:?})",
@@ -166,7 +166,7 @@ impl MetaDemux {
                 let bufref = klvbuf.make_mut();
                 // PTSを設定するとx264encodingした場合にどこかで詰まる
                 if let Some(pts) = buffer.pts() {
-                    gst::info!(CAT, imp: self, "pts {}", pts);
+                    gst::trace!(CAT, imp: self, "pts {}", pts);
                     bufref.set_pts(pts);
                 }
                 if let Some(dts) = buffer.dts() {
@@ -177,17 +177,17 @@ impl MetaDemux {
                 }
                 bufref.set_offset(buffer.offset());
             }
-            gst::info!(CAT, imp: self, "before push video {}", buffer.offset());
+            gst::trace!(CAT, imp: self, "before push video {}", buffer.offset());
             let res_src = self.srcpad.push(buffer);
-            gst::info!(CAT, imp: self, "after push srcpad");
+            gst::trace!(CAT, imp: self, "after push srcpad");
             self.flow_combiner
                 .lock()
                 .unwrap()
                 .update_pad_flow(&self.srcpad, res_src)?;
 
-            gst::info!(CAT, imp: self, "before push klv");
+            gst::trace!(CAT, imp: self, "before push klv");
             let res_klv = klvpad.push(klvbuf);
-            gst::info!(CAT, imp: self, "after push klv");
+            gst::trace!(CAT, imp: self, "after push klv");
             self.flow_combiner
                 .lock()
                 .unwrap()

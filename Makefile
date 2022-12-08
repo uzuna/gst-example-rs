@@ -71,7 +71,7 @@ run.demux-noenc: build
 .PHONY: run.demux
 run.demux: build
 # autovideosinkには流せないがfakesinkなら動く
-	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG_FILE=gst.log GST_DEBUG=1,metademux:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc num-buffers=20 ! video/x-raw,framerate=5/1 ! metatrans name=addrs op=add ! x264enc ! metademux name=d ! queue ! fakesink dump=true sync=true d. ! queue ! fakesink dump=true sync=true
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG_FILE=gst.log GST_DEBUG=1,metademux:7,mpegtsmux:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc num-buffers=20 ! video/x-raw,framerate=5/1 ! metatrans name=addrs op=add ! x264enc ! metademux name=d ! queue ! mpegtsmux name=m ! queue ! tsdemux ! decodebin ! autovideosink dump=true sync=true d. ! queue ! m.
 
 # klv demux
 .PHONY: run.demux-single
