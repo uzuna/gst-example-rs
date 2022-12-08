@@ -71,7 +71,7 @@ fn show_probe(name: &str, pbd: &Option<PadProbeData>) {
     }
 }
 
-/// run gstreamer
+/// check probe result with tee element
 pub(crate) fn build_tee_probe(
     testsrc: &VideoTestSrcOpt,
     videocaps: &VideoCapsOpt,
@@ -179,6 +179,7 @@ pub(crate) fn build_tee_probe(
     Ok(pipeline)
 }
 
+/// use demuxer
 pub(crate) fn build_demux_probe<P: AsRef<str>>(
     testsrc: &VideoTestSrcOpt,
     videocaps: &VideoCapsOpt,
@@ -201,7 +202,7 @@ pub(crate) fn build_demux_probe<P: AsRef<str>>(
     videosrc.set_property("is-live", true);
     // add klv
     klvaddr.set_property("op", "add");
-    // H264 encodeの方が遅いのでMETAのキューを大きくしてtsmuxにどちらとも供給が到達させる
+    // H264 encodeの方が遅いのでMETAのキューを大きくしてtsmuxにsrc,metaともにbufferを到達させる
     q_dm_v.set_property("max-size-buffers", 1u32);
     q_dm_k.set_property("max-size-time", 0u64);
 

@@ -33,8 +33,7 @@ pub static KLV_CAPS: Lazy<Caps> = Lazy::new(|| {
 
 #[derive(Default)]
 pub struct State {
-    // x264encなどEncoderはDTS時間を確保するためPTSに大きなオフセットを持つ
-    // ソースのオフセットに合わせるためsegmentを保持してMetaKLVのsegmentがズレないようにする
+    // metaストリームをsrcと同じsegmentにするため
     segment: Segment,
 }
 
@@ -53,8 +52,6 @@ impl MetaDemux {
         buffer: gst::Buffer,
     ) -> Result<gst::FlowSuccess, gst::FlowError> {
         gst::trace!(CAT, obj: pad, "Handling buffer {:?}", buffer);
-        // let res = self.srcpad.push(buffer);
-        // self.flow_combiner.lock().unwrap().update_flow(res)
         let res = self.sink_klv(buffer);
         gst::trace!(CAT, imp: self, "after sink_chain");
         res
@@ -62,8 +59,8 @@ impl MetaDemux {
 
     fn sink_event(&self, pad: &gst::Pad, event: gst::Event) -> bool {
         gst::trace!(CAT, obj: pad, "Handling event {:?}", event);
-        // klvにEoSとか一部は流したほうが良いのかも知れないがまだよく分かっていない
         match event.type_() {
+            // Segmentはsrcと同じものにする
             gst::EventType::Segment => {
                 gst::trace!(
                     CAT,
@@ -78,17 +75,18 @@ impl MetaDemux {
                 }
                 gst::Pad::event_default(pad, Some(&*self.obj()), event)
             }
+            // Eosは両ストリームに配信する
             gst::EventType::Eos => gst::Pad::event_default(pad, Some(&*self.obj()), event),
             _ => self.srcpad.push_event(event),
         }
     }
     fn sink_query(&self, pad: &gst::Pad, query: &mut gst::QueryRef) -> bool {
+        // この辺りのログはデバッグのため
         gst::trace!(CAT, obj: pad, "Handling query {:?}", query);
         self.srcpad.peer_query(query)
     }
     fn src_event(&self, pad: &gst::Pad, event: gst::Event) -> bool {
         gst::trace!(CAT, obj: pad, "Handling event {:?}", event);
-        // self.sinkpad.push_event(event)
         gst::Pad::event_default(pad, Some(&*self.obj()), event)
     }
     fn src_query(&self, pad: &gst::Pad, query: &mut gst::QueryRef) -> bool {
@@ -105,6 +103,7 @@ impl MetaDemux {
         gst::Pad::query_default(pad, Some(&*self.obj()), query)
     }
 
+    // 特定のmetaを含む場合はklvpadを生成
     fn create_pad(&self) -> gst::Pad {
         let name = "meta";
         let templ = self.obj().element_class().pad_template(name).unwrap();
@@ -121,10 +120,7 @@ impl MetaDemux {
 
         let full_stream_id = srcpad.create_stream_id(&*self.obj(), Some(name));
         gst::debug!(CAT, imp: self, "metapad stream_name ({:?})", full_stream_id);
-        let start_stream = gst::event::StreamStart::builder(&full_stream_id)
-            // .flags(StreamFlags::SPARSE)
-            .build();
-        srcpad.push_event(start_stream);
+        srcpad.push_event(gst::event::StreamStart::new(&full_stream_id));
         srcpad.push_event(gst::event::Caps::new(&KLV_CAPS));
 
         let segment = self.state.lock().unwrap().segment.clone();
@@ -162,9 +158,9 @@ impl MetaDemux {
                 let mut bw = klvbuf.make_mut().map_writable().unwrap();
                 klv::encode(&mut bw, &records).unwrap();
             }
+            // metaはsrc依存なのでsrc bufferと同じptsを指定する
             {
                 let bufref = klvbuf.make_mut();
-                // PTSを設定するとx264encodingした場合にどこかで詰まる
                 if let Some(pts) = buffer.pts() {
                     gst::trace!(CAT, imp: self, "pts {}", pts);
                     bufref.set_pts(pts);
@@ -177,6 +173,8 @@ impl MetaDemux {
                 }
                 bufref.set_offset(buffer.offset());
             }
+            // teeと同じくalwaysなsrcからpush
+            // この後ろ次第だが基本的にはqueueを繋ぐ必要がある
             gst::trace!(CAT, imp: self, "before push video {}", buffer.offset());
             let res_src = self.srcpad.push(buffer);
             gst::trace!(CAT, imp: self, "after push srcpad");
@@ -185,6 +183,8 @@ impl MetaDemux {
                 .unwrap()
                 .update_pad_flow(&self.srcpad, res_src)?;
 
+            // 後からmetaをpush
+            // encodeなどがある場合は複数回呼ばれるためこちらの後ろにもqueueがあるのが望ましい
             gst::trace!(CAT, imp: self, "before push klv");
             let res_klv = klvpad.push(klvbuf);
             gst::trace!(CAT, imp: self, "after push klv");

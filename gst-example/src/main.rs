@@ -255,7 +255,7 @@ fn run_pipeline(pipeline: gst::Pipeline) -> Result<(), anyhow::Error> {
             }
         }
     }
-    // log::info!("shutdown pipeline");
+
     pipeline.set_state(gst::State::Null)?;
     let (res, ..) = pipeline.state(Some(gst::ClockTime::SECOND));
     log::info!("shutdown pipeline {:?}", res.unwrap());
