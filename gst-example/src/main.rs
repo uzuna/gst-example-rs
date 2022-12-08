@@ -4,8 +4,15 @@ use gst::{
     traits::{ElementExt, GstBinExt, GstObjectExt},
     Element, Pipeline,
 };
+use signal_hook::flag;
 
-use std::process::Command;
+use std::{
+    process::Command,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 use structopt::{clap::arg_enum, StructOpt};
 
 // #[cfg(gst_app)]
@@ -199,49 +206,60 @@ pub(crate) fn build_bin(videocaps: &VideoCapsOpt) -> Result<gst::Pipeline, anyho
 }
 
 fn run_pipeline(pipeline: gst::Pipeline) -> Result<(), anyhow::Error> {
+    let term = Arc::new(AtomicBool::new(false));
+    flag::register(signal_hook::consts::SIGTERM, Arc::clone(&term))?;
+    flag::register(signal_hook::consts::SIGINT, Arc::clone(&term))?;
+
     // start playing
     pipeline.set_state(gst::State::Playing)?;
     let bus = pipeline
         .bus()
         .expect("Pipeline without bus. Shouldn't happen!");
 
-    for msg in bus.iter_timed(gst::ClockTime::NONE) {
-        use gst::MessageView;
+    // Ctrl+Cでパイプラインを停止する
+    'outer: while !term.load(Ordering::Relaxed) {
+        // シグナルを定期的に確認する
+        for msg in bus.iter_timed(gst::ClockTime::MSECOND * 100) {
+            use gst::MessageView;
 
-        match msg.view() {
-            MessageView::Eos(..) => break,
-            MessageView::Error(err) => {
-                pipeline.set_state(gst::State::Null)?;
-                let error = err.error().to_string();
-                if error.contains("Output window was closed") {
-                    break;
+            match msg.view() {
+                MessageView::Eos(..) => break 'outer,
+                MessageView::Error(err) => {
+                    pipeline.set_state(gst::State::Null)?;
+                    let error = err.error().to_string();
+                    if error.contains("Output window was closed") {
+                        break;
+                    }
+                    return Err(ErrorMessage {
+                        src: msg
+                            .src()
+                            .map(|s| String::from(s.path_string()))
+                            .unwrap_or_else(|| String::from("None")),
+                        error: err.error().to_string(),
+                        debug: err.debug(),
+                        source: err.error(),
+                    }
+                    .into());
                 }
-                return Err(ErrorMessage {
-                    src: msg
-                        .src()
-                        .map(|s| String::from(s.path_string()))
-                        .unwrap_or_else(|| String::from("None")),
-                    error: err.error().to_string(),
-                    debug: err.debug(),
-                    source: err.error(),
+                MessageView::StateChanged(x) => {
+                    log::debug!(
+                        "state-changed [{}] {:?} -> {:?}",
+                        x.src().unwrap().name(),
+                        x.old(),
+                        x.current()
+                    );
                 }
-                .into());
-            }
-            MessageView::StateChanged(x) => {
-                log::debug!(
-                    "state-changed [{}] {:?} -> {:?}",
-                    x.src().unwrap().name(),
-                    x.old(),
-                    x.current()
-                );
-            }
-            x => {
-                log::debug!("message {:?}", x);
+                x => {
+                    log::debug!("message {:?}", x);
+                }
             }
         }
     }
-
+    // log::info!("shutdown pipeline");
     pipeline.set_state(gst::State::Null)?;
+    let (res, ..) = pipeline.state(Some(gst::ClockTime::SECOND));
+    log::info!("shutdown pipeline {:?}", res.unwrap());
+
     Ok(())
 }
 
