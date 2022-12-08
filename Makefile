@@ -78,7 +78,7 @@ run.demux: build
 .PHONY: run.demux-app
 run.demux-app: build
 # launch by application
-	RUST_LOG=debug LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_PLUGIN_PATH=${RUST_OUT_DIR} GST_DEBUG=1,metademux:7 cargo run probe-tsdemux --fps 5
+	RUST_LOG=debug LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_PLUGIN_PATH=${RUST_OUT_DIR} GST_DEBUG=3 cargo run probe-tsdemux --fps 5 --savefile test2.m2ts
 
 .PHONY: deb
 deb:

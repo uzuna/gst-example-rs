@@ -4,6 +4,7 @@ use gst::{
     traits::{ElementExt, GstBinExt, GstObjectExt},
     Element, Pipeline,
 };
+
 use std::process::Command;
 use structopt::{clap::arg_enum, StructOpt};
 
@@ -63,6 +64,8 @@ enum Gst {
         testsrc: VideoTestSrcOpt,
         #[structopt(flatten)]
         videocaps: VideoCapsOpt,
+        #[structopt(long)]
+        savefile: Option<String>,
     },
 }
 
@@ -313,8 +316,12 @@ fn main() {
                 log::error!("gstream error: {:?}", e);
             }
         }
-        Gst::ProbeTsdemux { testsrc, videocaps } => {
-            let pipeline = probe::build_demux_probe(&testsrc, &videocaps)
+        Gst::ProbeTsdemux {
+            testsrc,
+            videocaps,
+            savefile,
+        } => {
+            let pipeline = probe::build_demux_probe(&testsrc, &videocaps, savefile.as_ref())
                 .expect("failed to build gst run pipeline");
             if let Err(e) = run_pipeline(pipeline) {
                 log::error!("gstream error: {:?}", e);
