@@ -1,6 +1,6 @@
 [package]
 name = "example-rs-sys"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "example shared object for gst metadata"
 authors = ["FUJINAKA Fumiya <uzuna.kf@gmail.com>"]

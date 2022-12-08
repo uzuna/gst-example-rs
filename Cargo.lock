@@ -233,7 +233,7 @@ dependencies = [
 
 [[package]]
 name = "example-rs-sys"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "gstreamer",
 ]
@@ -391,6 +391,7 @@ dependencies = [
  "gstreamer",
  "gstreamer-app",
  "log",
+ "signal-hook",
  "structopt",
 ]
 
@@ -780,6 +781,25 @@ name = "serde"
 version = "1.0.147"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d193d69bae983fc11a79df82342761dfbf28a99fc8d203dca4c3c1b590948965"
+
+[[package]]
+name = "signal-hook"
+version = "0.3.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a253b5e89e2698464fc26b545c9edceb338e18a89effeeecfea192c3025be29d"
+dependencies = [
+ "libc",
+ "signal-hook-registry",
+]
+
+[[package]]
+name = "signal-hook-registry"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e51e73328dc4ac0c7ccbda3a494dfa03df1de2f46018127f60c693f2648455b0"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "slab"

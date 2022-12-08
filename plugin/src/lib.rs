@@ -4,6 +4,7 @@ use gst::glib;
 
 mod exampletestsrc;
 mod klvtestsrc;
+mod metademux;
 mod metaklv;
 mod metatrans;
 mod testtrans;
@@ -28,5 +29,6 @@ fn plugin_init(plugin: &gst::Plugin) -> Result<(), glib::BoolError> {
     metatrans::register(plugin)?;
     exampletestsrc::register(plugin)?;
     klvtestsrc::register(plugin)?;
+    metademux::register(plugin)?;
     Ok(())
 }

@@ -1,6 +1,6 @@
 use gst::{
-    prelude::{ElementExtManual, GObjectExtManualGst, GstBinExtManual, PadExtManual},
-    traits::{ElementExt, GstObjectExt, PadExt},
+    prelude::{ElementExtManual, GObjectExtManualGst, GstBinExtManual, ObjectExt, PadExtManual},
+    traits::{ElementExt, GstBinExt, GstObjectExt, PadExt},
     PadProbeData, PadProbeType, Pipeline,
 };
 
@@ -71,7 +71,7 @@ fn show_probe(name: &str, pbd: &Option<PadProbeData>) {
     }
 }
 
-/// run gstreamer
+/// check probe result with tee element
 pub(crate) fn build_tee_probe(
     testsrc: &VideoTestSrcOpt,
     videocaps: &VideoCapsOpt,
@@ -176,5 +176,97 @@ pub(crate) fn build_tee_probe(
         show_probe("tee_sink", &pbi.data);
         gst::PadProbeReturn::Pass
     });
+    Ok(pipeline)
+}
+
+/// use demuxer
+pub(crate) fn build_demux_probe<P: AsRef<str>>(
+    testsrc: &VideoTestSrcOpt,
+    videocaps: &VideoCapsOpt,
+    tofile: Option<P>,
+) -> Result<Pipeline, anyhow::Error> {
+    gst::init()?;
+
+    // setup element
+    let pipeline = gst::Pipeline::new(None);
+    let videosrc = gst::ElementFactory::make("videotestsrc").build()?;
+    let klvaddr = gst::ElementFactory::make("metatrans").build()?;
+    let enc = gst::ElementFactory::make("x264enc").build()?;
+    let metademux = gst::ElementFactory::make("metademux").build()?;
+    let q_dm_v = gst::ElementFactory::make_with_name("queue", Some("q_dm_v"))?;
+    let q_dm_k = gst::ElementFactory::make_with_name("queue", Some("q_dm_k"))?;
+    let tsmux = gst::ElementFactory::make("mpegtsmux").build()?;
+    testsrc.set_properties(&videosrc);
+
+    // live source sync=falseなエレメントだけでもリアルタイムに動作する
+    videosrc.set_property("is-live", true);
+    // add klv
+    klvaddr.set_property("op", "add");
+    // H264 encodeの方が遅いのでMETAのキューを大きくしてtsmuxにsrc,metaともにbufferを到達させる
+    q_dm_v.set_property("max-size-buffers", 1u32);
+    q_dm_k.set_property("max-size-time", 0u64);
+
+    // add to pipeline and link elements
+    pipeline.add_many(&[
+        &videosrc, &klvaddr, &enc, &metademux, &q_dm_k, &q_dm_v, &tsmux,
+    ])?;
+    // attach caps
+    videosrc.link_filtered(&klvaddr, &videocaps.get_caps())?;
+    gst::Element::link_many(&[&klvaddr, &metademux])?;
+    gst::Element::link_many(&[&q_dm_v, &enc])?;
+
+    if let Some(name) = tofile {
+        log::info!("app: stream save to {:?}", name.as_ref());
+        let sink = gst::ElementFactory::make("filesink").build()?;
+        sink.set_property("location", name.as_ref());
+        pipeline.add(&sink)?;
+        tsmux.link(&sink)?;
+    } else {
+        let tsdemux = gst::ElementFactory::make("tsdemux").build()?;
+        let h264parse = gst::ElementFactory::make("h264parse").build()?;
+        let avdec_h264 = gst::ElementFactory::make("avdec_h264").build()?;
+        let sink = gst::ElementFactory::make("autovideosink").build()?;
+        pipeline.add_many(&[&tsdemux, &h264parse, &avdec_h264, &sink])?;
+
+        gst::Element::link_many(&[&tsmux, &tsdemux])?;
+        gst::Element::link_many(&[&h264parse, &avdec_h264, &sink])?;
+        // linling tsdemux to and
+        {
+            let hp_sink = h264parse.static_pad("sink").unwrap();
+            tsdemux.connect_pad_added(move |src, src_pad| {
+                log::info!("Received new pad {} from {}", src_pad.name(), src.name());
+                if src_pad.name().contains("video") {
+                    src_pad.link(&hp_sink).unwrap();
+                }
+            });
+        }
+    };
+
+    // linking metademux to enc
+    {
+        let d_src = metademux.static_pad("src").unwrap();
+        let q_v_sink = q_dm_v.static_pad("sink").unwrap();
+        d_src.link(&q_v_sink)?;
+    }
+    {
+        let q_k_sink = q_dm_k.static_pad("sink").unwrap();
+        metademux.connect_pad_added(move |src, src_pad| {
+            log::info!("Received new pad {} from {}", src_pad.name(), src.name());
+            if src_pad.name().contains("meta") {
+                src_pad.link(&q_k_sink).unwrap();
+            }
+        });
+    }
+    // connect tsmux
+    {
+        let enc_src = enc.static_pad("src").unwrap();
+        let ts_sink = tsmux.request_pad_simple("sink_%d").unwrap();
+        enc_src.link(&ts_sink)?;
+
+        let q_k_src = q_dm_k.static_pad("src").unwrap();
+        let ts_sink = tsmux.request_pad_simple("sink_%d").unwrap();
+        q_k_src.link(&ts_sink)?;
+    }
+
     Ok(pipeline)
 }
