@@ -70,8 +70,9 @@ run.demux-noenc: build
 # klv demux
 .PHONY: run.demux
 run.demux: build
-# autovideosinkには流せないがfakesinkなら動く
-	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG_FILE=gst.log GST_DEBUG=1,metademux:7,mpegtsmux:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc num-buffers=20 ! video/x-raw,framerate=5/1 ! metatrans name=addrs op=add ! x264enc ! metademux name=d ! queue ! mpegtsmux name=m ! queue ! tsdemux ! decodebin ! autovideosink dump=true sync=true d. ! queue ! m.
+# mpegtsmux -> tsdemuxの間にqueueを挟まなければ2つのストリームが認識されないためdemuxでprivate padが生えない
+# だから複数bufferを流すqueueが必要と思われる
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG_FILE=gst.log GST_DEBUG=1,metademux:7,mpegtsmux:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc num-buffers=20 ! video/x-raw,framerate=5/1 ! metatrans name=addrs op=add ! x264enc ! metademux name=d ! queue ! mpegtsmux name=m ! queue ! tsdemux ! h264parse ! avdec_h264 ! video/x-raw ! autovideosink dump=true sync=true d. ! queue ! m.
 
 # klv demux
 .PHONY: run.demux-single
