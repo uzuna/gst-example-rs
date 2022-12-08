@@ -50,7 +50,7 @@ run.save_klvts: build
 
 .PHONY: run.play_klvts
 run.play_klvts: build
-	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=3 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} filesrc location=test.m2ts ! tsdemux name=t ! video/x-h264 ! decodebin ! autovideosink t. ! meta/x-klv,parsed=true ! queue ! fakesink dump=true 
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=3 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} filesrc location=test.m2ts ! tsdemux name=t ! h264parse ! avdec_h264 ! autovideosink t. ! meta/x-klv,parsed=true ! queue ! fakesink dump=true 
 
 .PHONY: run.probe
 run.probe: build
@@ -72,11 +72,12 @@ run.demux-noenc: build
 run.demux: build
 # mpegtsmux -> tsdemuxの間にqueueを挟まなければ2つのストリームが認識されないためdemuxでprivate padが生えない
 # だから複数bufferを流すqueueが必要と思われる
-	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG_FILE=gst.log GST_DEBUG=1,metademux:7,mpegtsmux:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc num-buffers=20 ! video/x-raw,framerate=5/1 ! metatrans name=addrs op=add ! x264enc ! metademux name=d ! queue ! mpegtsmux name=m ! queue ! tsdemux ! h264parse ! avdec_h264 ! video/x-raw ! autovideosink dump=true sync=true d. ! queue ! m.
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG_FILE=gst.log GST_DEBUG=1,metademux:7,mpegtsmux:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} videotestsrc num-buffers=20 ! video/x-raw,framerate=5/1 ! metatrans name=addrs op=add ! x264enc ! metademux name=d ! queue ! mpegtsmux name=m ! queue ! filesink location=test.m2ts sync=true d. ! queue ! m.
 
 # klv demux
-.PHONY: run.demux-single
-run.demux-single: build
+.PHONY: run.demux-app
+run.demux-app: build
+# launch by application
 	RUST_LOG=debug LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_PLUGIN_PATH=${RUST_OUT_DIR} GST_DEBUG=1,metademux:7 cargo run probe-tsdemux --fps 5
 
 .PHONY: deb
