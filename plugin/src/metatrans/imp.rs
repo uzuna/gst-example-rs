@@ -5,12 +5,11 @@ use ec_meta::{ExampleCMeta, ExampleCMetaParams};
 use gst::traits::GstObjectExt;
 
 use ers_meta::{ExampleRsMeta, ExampleRsMetaParams, TransformMode};
-use gst::glib::{self, ParamFlags};
+use gst::glib;
 use gst::prelude::{ParamSpecBuilderExt, ToValue};
 use gst::subclass::prelude::*;
 use gst_base::subclass::prelude::BaseTransformImpl;
 use once_cell::sync::Lazy;
-use strum::{AsRefStr, EnumString};
 
 use crate::metatrans::CLASS_NAME;
 
@@ -25,19 +24,15 @@ static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
 });
 
 /// metadata operation mode
-#[derive(AsRefStr, Debug, EnumString, PartialEq, Clone, Copy)]
-#[strum(serialize_all = "lowercase")]
+#[derive(Default, Debug, PartialEq, Clone, Copy, glib::Enum)]
+#[repr(u32)]
+#[enum_type(name = "GstMetaTransTransformMethod")]
 enum TransformMethod {
-    // no action in transform
+    #[default]
+    #[enum_value(name = "Ignore: no action in transform", nick = "ignore")]
     Ignore,
-    // copy to dest buffer
+    #[enum_value(name = "Copy: copy to dest buffer", nick = "copy")]
     Copy,
-}
-
-impl Default for TransformMethod {
-    fn default() -> Self {
-        Self::Copy
-    }
 }
 
 #[allow(clippy::from_over_into)]
@@ -51,37 +46,29 @@ impl Into<TransformMode> for TransformMethod {
 }
 
 /// metadata operation mode
-#[derive(AsRefStr, Debug, EnumString, PartialEq, Clone, Copy)]
-#[strum(serialize_all = "lowercase")]
+#[derive(Default, Debug, PartialEq, Clone, Copy, glib::Enum)]
+#[repr(u32)]
+#[enum_type(name = "GstMetaTransOperationMode")]
 enum OperationMode {
-    // show metadata
-    Show,
-    // add metadata
-    Add,
-    // remove metadata
-    Remove,
-}
-
-impl Default for OperationMode {
-    fn default() -> Self {
-        Self::Show
-    }
+    #[default]
+    #[enum_value(name = "Show: show metadata", nick = "show")]
+    Show = 1,
+    #[enum_value(name = "Add: add metadata", nick = "add")]
+    Add = 2,
+    #[enum_value(name = "Remove: remove metadata", nick = "remove")]
+    Remove = 3,
 }
 
 /// 使うメタデータの種類を切り替える
-#[derive(AsRefStr, Debug, EnumString, PartialEq, Clone, Copy)]
-#[strum(serialize_all = "lowercase")]
+#[derive(Default, Debug, PartialEq, Clone, Copy, glib::Enum)]
+#[repr(u32)]
+#[enum_type(name = "GstMetaTransMetaType")]
 enum MetaType {
-    // Rust実装
-    Rs,
-    // C実装
-    C,
-}
-
-impl Default for MetaType {
-    fn default() -> Self {
-        Self::Rs
-    }
+    #[default]
+    #[enum_value(name = "Rs: impl by Rust", nick = "rs")]
+    Rs = 0,
+    #[enum_value(name = "C: impl by C", nick = "c")]
+    C = 1,
 }
 
 #[derive(Debug, Default)]
@@ -92,32 +79,14 @@ struct Settings {
 }
 
 impl Settings {
-    fn set_op_mode(&mut self, new_mode: &str) -> Result<(), String> {
-        match OperationMode::try_from(new_mode) {
-            Ok(mode) => {
-                self.op_mode = mode;
-                Ok(())
-            }
-            _ => Err(format!("invalid copy mode {}", new_mode)),
-        }
+    fn set_op_mode(&mut self, v: OperationMode) {
+        self.op_mode = v
     }
-    fn set_transform_method(&mut self, new_mode: &str) -> Result<(), String> {
-        match TransformMethod::try_from(new_mode) {
-            Ok(meta) => {
-                self.transform_meta = meta;
-                Ok(())
-            }
-            _ => Err(format!("invalid copy mode {}", new_mode)),
-        }
+    fn set_transform_method(&mut self, v: TransformMethod) {
+        self.transform_meta = v
     }
-    fn set_meta_type(&mut self, new_mode: &str) -> Result<(), String> {
-        match MetaType::try_from(new_mode) {
-            Ok(meta) => {
-                self.meta_type = meta;
-                Ok(())
-            }
-            _ => Err(format!("invalid meta_type {}", new_mode)),
-        }
+    fn set_meta_type(&mut self, v: MetaType) {
+        self.meta_type = v
     }
 }
 
@@ -179,23 +148,20 @@ impl ObjectImpl for MetaTrans {
     fn properties() -> &'static [glib::ParamSpec] {
         static PROPERTIES: Lazy<Vec<glib::ParamSpec>> = Lazy::new(|| {
             vec![
-                gst::glib::ParamSpecString::builder("op")
+                gst::glib::ParamSpecEnum::builder::<OperationMode>("op", OperationMode::default())
                     .nick("Operation")
                     .blurb("select operation mode")
-                    .default_value(OperationMode::default().as_ref())
-                    .flags(ParamFlags::READWRITE)
                     .build(),
-                gst::glib::ParamSpecString::builder("tmethod")
-                    .nick("Transform")
-                    .blurb("select transform method")
-                    .default_value(TransformMethod::default().as_ref())
-                    .flags(ParamFlags::READWRITE)
-                    .build(),
-                gst::glib::ParamSpecString::builder("mtype")
+                gst::glib::ParamSpecEnum::builder::<TransformMethod>(
+                    "tmethod",
+                    TransformMethod::default(),
+                )
+                .nick("Transform")
+                .blurb("select transform method")
+                .build(),
+                gst::glib::ParamSpecEnum::builder::<MetaType>("mtype", MetaType::default())
                     .nick("Metatype")
                     .blurb("select metadata type")
-                    .default_value(MetaType::default().as_ref())
-                    .flags(ParamFlags::READWRITE)
                     .build(),
             ]
         });
@@ -207,24 +173,24 @@ impl ObjectImpl for MetaTrans {
     fn set_property(&self, _id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
         match pspec.name() {
             "op" => {
-                let x: String = value.get().expect("type checked upstream");
-                gst::info!(CAT, imp: self, "set prop op to {}", &x);
+                let x = value.get::<OperationMode>().expect("type checked upstream");
+                gst::info!(CAT, imp: self, "set prop op to {:?}", &x);
                 let mut settings = self.settings.write().unwrap();
-                settings.set_op_mode(&x).expect("set op mode");
+                settings.set_op_mode(x);
             }
             "tmethod" => {
-                let x: String = value.get().expect("type checked upstream");
-                gst::info!(CAT, imp: self, "set tmethod to {}", &x);
+                let x = value
+                    .get::<TransformMethod>()
+                    .expect("type checked upstream");
+                gst::info!(CAT, imp: self, "set tmethod to {:?}", x);
                 let mut settings = self.settings.write().unwrap();
-                settings
-                    .set_transform_method(&x)
-                    .expect("set transform method");
+                settings.set_transform_method(x);
             }
             "mtype" => {
-                let x: String = value.get().expect("type checked upstream");
-                gst::info!(CAT, imp: self, "set metatype to {}", &x);
+                let x = value.get::<MetaType>().expect("type checked upstream");
+                gst::info!(CAT, imp: self, "set metatype to {:?}", x);
                 let mut settings = self.settings.write().unwrap();
-                settings.set_meta_type(&x).expect("set metatype");
+                settings.set_meta_type(x);
             }
             _ => unimplemented!(),
         }
@@ -236,15 +202,15 @@ impl ObjectImpl for MetaTrans {
         match pspec.name() {
             "op" => {
                 let settings = self.settings.read().unwrap();
-                settings.op_mode.as_ref().to_value()
+                settings.op_mode.to_value()
             }
             "tmethod" => {
                 let settings = self.settings.read().unwrap();
-                settings.transform_meta.as_ref().to_value()
+                settings.transform_meta.to_value()
             }
             "mtype" => {
                 let settings = self.settings.read().unwrap();
-                settings.meta_type.as_ref().to_value()
+                settings.meta_type.to_value()
             }
             _ => unimplemented!(),
         }
