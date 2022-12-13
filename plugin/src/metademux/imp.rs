@@ -152,7 +152,7 @@ impl MetaDemux {
                     srcpad
                 }
             };
-            let records = klv::to_bytes(&ExampleDataset::from(meta.deref())).unwrap();
+            let records = serde_klv::to_bytes(&ExampleDataset::from(meta.deref())).unwrap();
             let mut klvbuf = gst::Buffer::with_size(records.len()).unwrap();
             {
                 let mut bw = klvbuf.make_mut().map_writable().unwrap();

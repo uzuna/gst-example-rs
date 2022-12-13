@@ -1,14 +1,12 @@
 use std::sync::Mutex;
 
 use gst::glib;
-use gst::glib::ParamFlags;
 use gst::prelude::ParamSpecBuilderExt;
 use gst::prelude::ToValue;
 use gst::subclass::prelude::*;
 use gst_base::subclass::prelude::BaseTransformImpl;
 use once_cell::sync::Lazy;
 use std::convert::AsRef;
-use strum::{AsRefStr, EnumString};
 
 use super::CLASS_NAME;
 use super::ELEMENT_NAME;
@@ -23,21 +21,25 @@ static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
 
 // BaseTransformerのバッファコピーモード選択
 // コピー方法でメタデータなどがどのように変化するのかを比較可能にする
-#[derive(AsRefStr, Debug, EnumString, PartialEq, Clone, Copy)]
-#[strum(serialize_all = "lowercase")]
+// glib::Enum定義が必要なのはEnumをGStreamerのGtypeとして登録させる必要があるから
+// なのでenum_typeで一意の名前をつける必要があり
+// enum_valueを使ってgst-inspect向けに詳細情報を付与する
+#[derive(Debug, Default, PartialEq, Clone, Copy, glib::Enum)]
+#[enum_type(name = "TestTransCopyMode")]
 enum CopyMode {
-    Timestamp,
-    Meta,
-    MetaOnly,
-    MetaDeep,
-    Memory,
-    All,
-}
-
-impl Default for CopyMode {
-    fn default() -> Self {
-        CopyMode::Meta
-    }
+    #[enum_value(name = "Timestamp: copy timestamp only")]
+    Timestamp = 0,
+    #[default]
+    #[enum_value(name = "Meta: copy timestamp and meta")]
+    Meta = 1,
+    #[enum_value(name = "MetaOnly: copy meta only")]
+    MetaOnly = 2,
+    #[enum_value(name = "MetaDeep: copy meta with deepflag")]
+    MetaDeep = 3,
+    #[enum_value(name = "Memory: copy memory")]
+    Memory = 4,
+    #[enum_value(name = "All: copy all")]
+    All = 5,
 }
 
 impl CopyMode {
@@ -62,16 +64,8 @@ struct Settings {
 }
 
 impl Settings {
-    const DEFAULT_COPY_MODE: CopyMode = CopyMode::Meta;
-
-    fn set_copy_mode(&mut self, new_mode: &str) -> Result<(), String> {
-        match CopyMode::try_from(new_mode) {
-            Ok(mode) => {
-                self.copy_mode = mode;
-                Ok(())
-            }
-            _ => Err(format!("invalid copy mode {}", new_mode)),
-        }
+    fn set_copy_mode(&mut self, v: CopyMode) {
+        self.copy_mode = v
     }
 }
 
@@ -140,12 +134,12 @@ impl ObjectImpl for TestTrans {
     // Metadata for the property
     fn properties() -> &'static [glib::ParamSpec] {
         static PROPERTIES: Lazy<Vec<glib::ParamSpec>> = Lazy::new(|| {
-            vec![gst::glib::ParamSpecString::builder("copymode")
-                .nick("CopyMode")
-                .blurb("select copy mode")
-                .default_value(Settings::DEFAULT_COPY_MODE.as_ref())
-                .flags(ParamFlags::READWRITE)
-                .build()]
+            vec![
+                gst::glib::ParamSpecEnum::builder::<CopyMode>("copymode", CopyMode::default())
+                    .nick("CopyMode")
+                    .blurb("select copy mode")
+                    .build(),
+            ]
         });
 
         PROPERTIES.as_ref()
@@ -155,10 +149,10 @@ impl ObjectImpl for TestTrans {
     fn set_property(&self, _id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
         match pspec.name() {
             "copymode" => {
-                let x: String = value.get().expect("type checkd upstream");
-                gst::info!(CAT, imp: self, "set prop copymode to {}", &x);
+                let x = value.get::<CopyMode>().expect("type checkd upstream");
+                gst::info!(CAT, imp: self, "set prop copymode to {:?}", x);
                 let mut settings = self.settings.lock().unwrap();
-                settings.set_copy_mode(&x).expect("set copy mode");
+                settings.set_copy_mode(x);
             }
             _ => unimplemented!(),
         }
@@ -170,7 +164,7 @@ impl ObjectImpl for TestTrans {
         match pspec.name() {
             "copymode" => {
                 let settings = self.settings.lock().unwrap();
-                settings.copy_mode.as_ref().to_value()
+                settings.copy_mode.to_value()
             }
             _ => unimplemented!(),
         }
