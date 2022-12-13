@@ -17,7 +17,7 @@ use gst_base::traits::BaseSrcExt;
 
 use once_cell::sync::Lazy;
 
-use crate::metaklv::encode_klv_params;
+use crate::metaklv::ExampleDataset;
 
 use super::CLASS_NAME;
 use super::ELEMENT_NAME;
@@ -226,13 +226,11 @@ impl PushSrcImpl for KlvTestSrc {
             (count % i32::MAX as u64) as i32,
             ers_meta::TransformMode::Copy,
         );
-        let records = encode_klv_params(&meta);
-        let size = klv::encode_len(&records);
-        let mut buffer = gst::Buffer::with_size(size).unwrap();
+        let records = klv::to_bytes(&ExampleDataset::from(&meta)).unwrap();
+        let mut buffer = gst::Buffer::with_size(records.len()).unwrap();
         {
             let mut bw = buffer.make_mut().map_writable().unwrap();
-            // bw.copy_from_slice("testdata".as_bytes());
-            klv::encode(&mut bw, &records).unwrap();
+            bw.copy_from_slice(&records);
         }
 
         // fractionから設定可能にしたい
