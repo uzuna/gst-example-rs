@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::sync::Mutex;
 
 use ers_meta::ExampleRsMeta;
@@ -12,7 +13,7 @@ use gst::{glib, EventView, Segment};
 use gst_base::UniqueFlowCombiner;
 use once_cell::sync::Lazy;
 
-use crate::metaklv::encode_klv;
+use crate::metaklv::ExampleDataset;
 
 use super::CLASS_NAME;
 use super::ELEMENT_NAME;
@@ -151,12 +152,11 @@ impl MetaDemux {
                     srcpad
                 }
             };
-            let records = encode_klv(&meta);
-            let size = klv::encode_len(&records);
-            let mut klvbuf = gst::Buffer::with_size(size).unwrap();
+            let records = klv::to_bytes(&ExampleDataset::from(meta.deref())).unwrap();
+            let mut klvbuf = gst::Buffer::with_size(records.len()).unwrap();
             {
                 let mut bw = klvbuf.make_mut().map_writable().unwrap();
-                klv::encode(&mut bw, &records).unwrap();
+                bw.copy_from_slice(&records);
             }
             // metaはsrc依存なのでsrc bufferと同じptsを指定する
             {
