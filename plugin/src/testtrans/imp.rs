@@ -21,6 +21,9 @@ static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
 
 // BaseTransformerのバッファコピーモード選択
 // コピー方法でメタデータなどがどのように変化するのかを比較可能にする
+// glib::Enum定義が必要なのはEnumをGStreamerのGtypeとして登録させる必要があるから
+// なのでenum_typeで一意の名前をつける必要があり
+// enum_valueを使ってgst-inspect向けに詳細情報を付与する
 #[derive(Debug, Default, PartialEq, Clone, Copy, glib::Enum)]
 #[enum_type(name = "TestTransCopyMode")]
 enum CopyMode {
