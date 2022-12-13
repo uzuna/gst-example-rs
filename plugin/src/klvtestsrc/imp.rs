@@ -226,7 +226,7 @@ impl PushSrcImpl for KlvTestSrc {
             (count % i32::MAX as u64) as i32,
             ers_meta::TransformMode::Copy,
         );
-        let records = klv::to_bytes(&ExampleDataset::from(&meta)).unwrap();
+        let records = serde_klv::to_bytes(&ExampleDataset::from(&meta)).unwrap();
         let mut buffer = gst::Buffer::with_size(records.len()).unwrap();
         {
             let mut bw = buffer.make_mut().map_writable().unwrap();

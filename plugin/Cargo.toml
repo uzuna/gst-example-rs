@@ -18,8 +18,8 @@ once_cell = "1.0"
 strum = { version = "0.24.1", features = ["derive"] }
 ers_meta = { package = "example-rs-sys",  path = "../meta/example-rs-sys"}
 ec_meta = { package = "example-c-sys",  path = "../meta/example-c-sys"}
-klv = { package="klv", git = "https://github.com/uzuna/mpegts_learn", branch = "master", version = "0.3.0" }
 serde = { version = "1.0.150", features = ["derive"] }
+serde_klv = "0.1.0"
 
 [build-dependencies]
 gst-plugin-version-helper = {  git = "https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs"}

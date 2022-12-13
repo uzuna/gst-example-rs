@@ -376,9 +376,9 @@ dependencies = [
  "gst-plugin-version-helper",
  "gstreamer",
  "gstreamer-base",
- "klv",
  "once_cell",
  "serde",
+ "serde_klv",
  "strum",
 ]
 
@@ -553,15 +553,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49409df3e3bf0856b916e2ceaca09ee28e6871cf7d9ce97a692cacfdb2a25a47"
 dependencies = [
  "wasm-bindgen",
-]
-
-[[package]]
-name = "klv"
-version = "0.3.0"
-source = "git+https://github.com/uzuna/mpegts_learn?branch=master#0bace66e413aea6be956a5062b96935923ce8770"
-dependencies = [
- "byteorder",
- "serde",
 ]
 
 [[package]]
@@ -796,6 +787,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "serde_klv"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1257042714daab69a1c50befee1a35e4bd8c77cebd49ba4f20f976463ea35fd2"
+dependencies = [
+ "byteorder",
+ "serde",
 ]
 
 [[package]]
