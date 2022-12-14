@@ -8,12 +8,11 @@ use gst::subclass::prelude::{
     ObjectSubclassExt,
 };
 use gst::traits::{ElementExt, PadExt};
-use gst::Caps;
 use gst::{glib, EventView, Segment};
 use gst_base::UniqueFlowCombiner;
 use once_cell::sync::Lazy;
 
-use crate::metaklv::ExampleDataset;
+use crate::metaklv::{ExampleDataset, KLV_CAPS};
 
 use super::CLASS_NAME;
 use super::ELEMENT_NAME;
@@ -24,12 +23,6 @@ static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
         gst::DebugColorFlags::empty(),
         Some(CLASS_NAME),
     )
-});
-
-pub static KLV_CAPS: Lazy<Caps> = Lazy::new(|| {
-    gst::Caps::builder("meta/x-klv")
-        .field("parsed", true)
-        .build()
 });
 
 #[derive(Default)]

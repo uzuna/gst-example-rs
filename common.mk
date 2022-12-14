@@ -15,10 +15,10 @@ TARGET:=
 ifeq (${TARGET}, release)
 	BUILD_FLAG=--release
 # 出力先をrustのビルドディレクトリとする
-	RUST_OUT_DIR=${PROJECT_DIR}target/release
+	RUST_OUT_DIR=${PROJECT_DIR}target/release/
 else
 	BUILD_FLAG=
-	RUST_OUT_DIR=${PROJECT_DIR}target/debug
+	RUST_OUT_DIR=${PROJECT_DIR}target/debug/
 endif
 
 ${BUILD_DIR}:

@@ -66,6 +66,12 @@ run.demux-app: build
 # launch by application
 	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_PLUGIN_PATH=${RUST_OUT_DIR} GST_DEBUG=3 cargo run probe-tsdemux --fps 10
 
+# klv muxを使う
+.PHONY: run.mux
+run.mux: build
+# launch by application
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=3,metamux:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} filesrc location=test.m2ts ! tsdemux name=t ! h264parse ! avdec_h264 ! metamux name=m ! autovideosink t. ! meta/x-klv,parsed=true ! queue max-size-time=0 ! m.
+
 .PHONY: deb
 deb:
 	make -C plugin deb

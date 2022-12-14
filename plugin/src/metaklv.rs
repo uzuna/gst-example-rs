@@ -1,5 +1,7 @@
 //! Ecample metaklv impl
 use ers_meta::{ExampleRsMeta, ExampleRsMetaParams};
+use gst::Caps;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -32,3 +34,9 @@ impl From<&ExampleRsMetaParams> for ExampleDataset {
         }
     }
 }
+
+pub static KLV_CAPS: Lazy<Caps> = Lazy::new(|| {
+    gst::Caps::builder("meta/x-klv")
+        .field("parsed", true)
+        .build()
+});
