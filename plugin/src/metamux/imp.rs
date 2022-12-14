@@ -1,9 +1,17 @@
+use ers_meta::ExampleRsMetaParams;
 use gst::glib;
+use gst::prelude::Cast;
+use gst::prelude::ElementExtManual;
+use gst::prelude::PadExtManual;
 use gst::prelude::StaticType;
 use gst::subclass::prelude::*;
+use gst::traits::PadExt;
 use gst_base::subclass::prelude::AggregatorImpl;
 use gst_base::subclass::prelude::AggregatorImplExt;
+use gst_base::traits::AggregatorPadExt;
 use once_cell::sync::Lazy;
+
+use crate::metaklv::ExampleDataset;
 
 use super::CLASS_NAME;
 use super::ELEMENT_NAME;
@@ -80,9 +88,48 @@ impl ObjectSubclass for MetaMux {
 
 impl AggregatorImpl for MetaMux {
     fn aggregate(&self, timeout: bool) -> Result<gst::FlowSuccess, gst::FlowError> {
-        gst::info!(CAT, "aggregate timeout {}", timeout);
+        gst::debug!(CAT, "aggregate timeout {}", timeout);
+        let mut video_buf = None;
         // TODO impl aggregate
-        Err(gst::FlowError::NotSupported)
+        for pad in self
+            .obj()
+            .sink_pads()
+            .into_iter()
+            .map(|pad| pad.downcast::<gst_base::AggregatorPad>().unwrap())
+        {
+            if let Some(buf) = pad.pop_buffer() {
+                gst::debug!(
+                    CAT,
+                    "aggregate timeout has buf {:?} {:?} {:?} {:?}",
+                    pad.caps(),
+                    buf.pts(),
+                    buf.dts(),
+                    buf.offset()
+                );
+                match pad.caps().unwrap().structure(0).unwrap().name() {
+                    "video/x-raw" => video_buf = Some(buf),
+                    "meta/x-klv" => {
+                        if let Some(ref mut video_buf) = video_buf {
+                            let param: ExampleRsMetaParams = {
+                                let b = buf.map_readable().unwrap();
+                                let v = serde_klv::from_bytes::<ExampleDataset>(&b).unwrap();
+                                v.into()
+                            };
+                            let wb = video_buf.make_mut();
+                            ers_meta::ExampleRsMeta::add(wb, param);
+                        }
+                    }
+                    _ => {
+                        unimplemented!()
+                    }
+                }
+            }
+        }
+        if let Some(buffer) = video_buf {
+            self.obj().src_pads()[0].push(buffer)
+        } else {
+            Err(gst::FlowError::NotSupported)
+        }
     }
 
     fn create_new_pad(

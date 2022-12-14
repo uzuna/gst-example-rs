@@ -6,13 +6,22 @@
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransformMode {
-    Ignore,
-    Copy,
+    Ignore = 0,
+    Copy = 1,
 }
 
 impl Default for TransformMode {
     fn default() -> Self {
         Self::Copy
+    }
+}
+
+impl From<u32> for TransformMode {
+    fn from(x: u32) -> Self {
+        match x {
+            0 => Self::Ignore,
+            _ => Self::Copy,
+        }
     }
 }
 
