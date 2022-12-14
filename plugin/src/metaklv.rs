@@ -35,6 +35,7 @@ impl From<&ExampleRsMetaParams> for ExampleDataset {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<ExampleRsMetaParams> for ExampleDataset {
     fn into(self) -> ExampleRsMetaParams {
         ExampleRsMetaParams {

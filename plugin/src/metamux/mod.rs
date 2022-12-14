@@ -9,7 +9,7 @@ const CLASS_NAME: &str = "MetaMux";
 mod imp;
 
 gst::glib::wrapper! {
-    pub struct MetaMux(ObjectSubclass<imp::MetaMux>) @extends gst::Element, gst::Object;
+    pub struct MetaMux(ObjectSubclass<imp::MetaMux>) @extends gst_base::Aggregator, gst::Element, gst::Object;
 }
 
 pub fn register(plugin: &gst::Plugin) -> Result<(), glib::BoolError> {

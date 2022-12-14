@@ -1,3 +1,6 @@
+//! MetaDemuxer
+//!
+//! Videoに埋め込まれたmetadataをvideo + klvの2ストリームに分割する
 use std::ops::Deref;
 use std::sync::Mutex;
 
@@ -211,7 +214,8 @@ impl ElementImpl for MetaDemux {
 
     fn pad_templates() -> &'static [gst::PadTemplate] {
         static PAD_TEMPLATES: Lazy<Vec<gst::PadTemplate>> = Lazy::new(|| {
-            let caps = gst::Caps::new_any();
+            // encode後はフレームの順序が変わることがあるのでエンコード前に分離したいのでx-rawに限定する
+            let caps = gst::Caps::builder("video/x-raw").build();
             let src_pad_template = gst::PadTemplate::new(
                 "src",
                 gst::PadDirection::Src,
