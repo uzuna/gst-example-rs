@@ -46,7 +46,7 @@ run.save_klvts: build
 # m2tsファイルを再生してklvを確認
 .PHONY: run.play_klvts
 run.play_klvts: build
-	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=3 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} filesrc location=test.m2ts ! tsdemux name=t ! h264parse ! avdec_h264 ! autovideosink t. ! meta/x-klv,parsed=true ! queue ! fakesink dump=true 
+	GST_DEBUG_DUMP_DOT_DIR=. LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=1,rsidentity:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} filesrc location=test.m2ts ! tsdemux name=t ! h264parse ! avdec_h264 ! rsidentity ! autovideosink t. ! meta/x-klv,parsed=true ! queue ! fakesink dump=true 
 
 # probe動作を見る
 .PHONY: run.probe
@@ -65,6 +65,12 @@ run.demux: build
 run.demux-app: build
 # launch by application
 	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_PLUGIN_PATH=${RUST_OUT_DIR} GST_DEBUG=3 cargo run probe-tsdemux --fps 10
+
+# klv muxを使う
+.PHONY: run.mux
+run.mux: build
+# launch by application
+	LD_LIBRARY_PATH=${RUST_OUT_DIR} GST_DEBUG=1,metamux:3,metatrans:7 gst-launch-1.0 --gst-plugin-path=${RUST_OUT_DIR} filesrc location=test.m2ts ! tsdemux name=t ! h264parse ! avdec_h264 ! metamux name=m ! metatrans op=show ! autovideosink t. ! meta/x-klv,parsed=true ! queue max-size-time=0 ! m.
 
 .PHONY: deb
 deb:

@@ -1,3 +1,6 @@
+//! MetaDemuxer
+//!
+//! Videoに埋め込まれたmetadataをvideo + klvの2ストリームに分割する
 use std::ops::Deref;
 use std::sync::Mutex;
 
@@ -8,12 +11,11 @@ use gst::subclass::prelude::{
     ObjectSubclassExt,
 };
 use gst::traits::{ElementExt, PadExt};
-use gst::Caps;
 use gst::{glib, EventView, Segment};
 use gst_base::UniqueFlowCombiner;
 use once_cell::sync::Lazy;
 
-use crate::metaklv::ExampleDataset;
+use crate::metaklv::{ExampleDataset, KLV_CAPS};
 
 use super::CLASS_NAME;
 use super::ELEMENT_NAME;
@@ -24,12 +26,6 @@ static CAT: Lazy<gst::DebugCategory> = Lazy::new(|| {
         gst::DebugColorFlags::empty(),
         Some(CLASS_NAME),
     )
-});
-
-pub static KLV_CAPS: Lazy<Caps> = Lazy::new(|| {
-    gst::Caps::builder("meta/x-klv")
-        .field("parsed", true)
-        .build()
 });
 
 #[derive(Default)]
@@ -218,7 +214,8 @@ impl ElementImpl for MetaDemux {
 
     fn pad_templates() -> &'static [gst::PadTemplate] {
         static PAD_TEMPLATES: Lazy<Vec<gst::PadTemplate>> = Lazy::new(|| {
-            let caps = gst::Caps::new_any();
+            // encode後はフレームの順序が変わることがあるのでエンコード前に分離したいのでx-rawに限定する
+            let caps = gst::Caps::builder("video/x-raw").build();
             let src_pad_template = gst::PadTemplate::new(
                 "src",
                 gst::PadDirection::Src,

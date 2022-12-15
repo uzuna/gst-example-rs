@@ -6,6 +6,7 @@ mod exampletestsrc;
 mod klvtestsrc;
 mod metademux;
 mod metaklv;
+mod metamux;
 mod metatrans;
 mod testtrans;
 
@@ -30,5 +31,6 @@ fn plugin_init(plugin: &gst::Plugin) -> Result<(), glib::BoolError> {
     exampletestsrc::register(plugin)?;
     klvtestsrc::register(plugin)?;
     metademux::register(plugin)?;
+    metamux::register(plugin)?;
     Ok(())
 }

@@ -303,8 +303,8 @@ dependencies = [
 
 [[package]]
 name = "gio-sys"
-version = "0.16.2"
-source = "git+https://github.com/gtk-rs/gtk-rs-core?branch=0.16#0fff9d90c9226514e96ee46a82cb54e3da7cf91c"
+version = "0.16.6"
+source = "git+https://github.com/gtk-rs/gtk-rs-core?branch=0.16#5b15f33e46e8f983efbe37a50c57b2d358720a6d"
 dependencies = [
  "glib-sys",
  "gobject-sys",
@@ -315,8 +315,8 @@ dependencies = [
 
 [[package]]
 name = "glib"
-version = "0.16.2"
-source = "git+https://github.com/gtk-rs/gtk-rs-core?branch=0.16#0fff9d90c9226514e96ee46a82cb54e3da7cf91c"
+version = "0.16.6"
+source = "git+https://github.com/gtk-rs/gtk-rs-core?branch=0.16#5b15f33e46e8f983efbe37a50c57b2d358720a6d"
 dependencies = [
  "bitflags",
  "futures-channel",
@@ -336,8 +336,8 @@ dependencies = [
 
 [[package]]
 name = "glib-macros"
-version = "0.16.2"
-source = "git+https://github.com/gtk-rs/gtk-rs-core?branch=0.16#0fff9d90c9226514e96ee46a82cb54e3da7cf91c"
+version = "0.16.6"
+source = "git+https://github.com/gtk-rs/gtk-rs-core?branch=0.16#5b15f33e46e8f983efbe37a50c57b2d358720a6d"
 dependencies = [
  "anyhow",
  "heck 0.4.0",
@@ -350,8 +350,8 @@ dependencies = [
 
 [[package]]
 name = "glib-sys"
-version = "0.16.2"
-source = "git+https://github.com/gtk-rs/gtk-rs-core?branch=0.16#0fff9d90c9226514e96ee46a82cb54e3da7cf91c"
+version = "0.16.6"
+source = "git+https://github.com/gtk-rs/gtk-rs-core?branch=0.16#5b15f33e46e8f983efbe37a50c57b2d358720a6d"
 dependencies = [
  "libc",
  "system-deps",
@@ -359,8 +359,8 @@ dependencies = [
 
 [[package]]
 name = "gobject-sys"
-version = "0.16.2"
-source = "git+https://github.com/gtk-rs/gtk-rs-core?branch=0.16#0fff9d90c9226514e96ee46a82cb54e3da7cf91c"
+version = "0.16.6"
+source = "git+https://github.com/gtk-rs/gtk-rs-core?branch=0.16#5b15f33e46e8f983efbe37a50c57b2d358720a6d"
 dependencies = [
  "glib-sys",
  "libc",
@@ -405,8 +405,8 @@ dependencies = [
 
 [[package]]
 name = "gstreamer"
-version = "0.19.1"
-source = "git+https://gitlab.freedesktop.org/gstreamer/gstreamer-rs?branch=0.19#5dd56d8c439c6dc811806c2f9a08874bf7113800"
+version = "0.19.3"
+source = "git+https://gitlab.freedesktop.org/gstreamer/gstreamer-rs?branch=0.19#c1459c1de8616c3776c01fb2994bb0192edce8ef"
 dependencies = [
  "bitflags",
  "cfg-if",
@@ -428,8 +428,8 @@ dependencies = [
 
 [[package]]
 name = "gstreamer-app"
-version = "0.19.1"
-source = "git+https://gitlab.freedesktop.org/gstreamer/gstreamer-rs?branch=0.19#5dd56d8c439c6dc811806c2f9a08874bf7113800"
+version = "0.19.3"
+source = "git+https://gitlab.freedesktop.org/gstreamer/gstreamer-rs?branch=0.19#c1459c1de8616c3776c01fb2994bb0192edce8ef"
 dependencies = [
  "bitflags",
  "futures-core",
@@ -444,8 +444,8 @@ dependencies = [
 
 [[package]]
 name = "gstreamer-app-sys"
-version = "0.19.1"
-source = "git+https://gitlab.freedesktop.org/gstreamer/gstreamer-rs?branch=0.19#5dd56d8c439c6dc811806c2f9a08874bf7113800"
+version = "0.19.3"
+source = "git+https://gitlab.freedesktop.org/gstreamer/gstreamer-rs?branch=0.19#c1459c1de8616c3776c01fb2994bb0192edce8ef"
 dependencies = [
  "glib-sys",
  "gstreamer-base-sys",
@@ -456,8 +456,8 @@ dependencies = [
 
 [[package]]
 name = "gstreamer-base"
-version = "0.19.1"
-source = "git+https://gitlab.freedesktop.org/gstreamer/gstreamer-rs?branch=0.19#5dd56d8c439c6dc811806c2f9a08874bf7113800"
+version = "0.19.3"
+source = "git+https://gitlab.freedesktop.org/gstreamer/gstreamer-rs?branch=0.19#c1459c1de8616c3776c01fb2994bb0192edce8ef"
 dependencies = [
  "atomic_refcell",
  "bitflags",
@@ -470,8 +470,8 @@ dependencies = [
 
 [[package]]
 name = "gstreamer-base-sys"
-version = "0.19.1"
-source = "git+https://gitlab.freedesktop.org/gstreamer/gstreamer-rs?branch=0.19#5dd56d8c439c6dc811806c2f9a08874bf7113800"
+version = "0.19.3"
+source = "git+https://gitlab.freedesktop.org/gstreamer/gstreamer-rs?branch=0.19#c1459c1de8616c3776c01fb2994bb0192edce8ef"
 dependencies = [
  "glib-sys",
  "gobject-sys",
@@ -482,8 +482,8 @@ dependencies = [
 
 [[package]]
 name = "gstreamer-sys"
-version = "0.19.1"
-source = "git+https://gitlab.freedesktop.org/gstreamer/gstreamer-rs?branch=0.19#5dd56d8c439c6dc811806c2f9a08874bf7113800"
+version = "0.19.3"
+source = "git+https://gitlab.freedesktop.org/gstreamer/gstreamer-rs?branch=0.19#c1459c1de8616c3776c01fb2994bb0192edce8ef"
 dependencies = [
  "glib-sys",
  "gobject-sys",
