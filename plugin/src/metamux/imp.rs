@@ -198,50 +198,8 @@ impl AggregatorImpl for MetaMux {
         self.obj().finish_buffer(buffer)
     }
 
-    fn sink_query(
-        &self,
-        aggregator_pad: &gst_base::AggregatorPad,
-        query: &mut gst::QueryRef,
-    ) -> bool {
-        gst::debug!(
-            CAT,
-            imp: self,
-            "sink_query {:?} {:?}",
-            query,
-            aggregator_pad.caps()
-        );
-        self.parent_sink_query(aggregator_pad, query)
-    }
-
-    fn sink_event(&self, aggregator_pad: &gst_base::AggregatorPad, event: gst::Event) -> bool {
-        gst::debug!(
-            CAT,
-            imp: self,
-            "sink_event {:?} {:?}",
-            event,
-            aggregator_pad.caps()
-        );
-        self.parent_sink_event(aggregator_pad, event)
-    }
-
-    fn src_query(&self, query: &mut gst::QueryRef) -> bool {
-        gst::debug!(CAT, imp: self, "src_query {:?}", query);
-        self.parent_src_query(query)
-    }
-
-    fn src_event(&self, event: gst::Event) -> bool {
-        gst::debug!(CAT, imp: self, "src_event {:?}", event);
-        self.parent_src_event(event)
-    }
-
-    fn src_activate(&self, mode: gst::PadMode, active: bool) -> Result<(), gst::LoggableError> {
-        gst::debug!(CAT, imp: self, "src_activate {:?} {}", mode, active);
-        self.parent_src_activate(mode, active)
-    }
-
-    // 必要かどうか分かっていない
     // もしもソース毎にpts等が異なる場合はこれで合わせこみを行う。
-    // 今回の利用ケースでは同じptsなので気にしなくて良い
+    // 今回の利用ケースでは同じptsなので気にしなくて良いが記録のために残しておく
     fn clip(
         &self,
         aggregator_pad: &gst_base::AggregatorPad,
@@ -289,10 +247,5 @@ impl AggregatorImpl for MetaMux {
             };
         }
         self.parent_update_src_caps(caps)
-    }
-
-    fn negotiated_src_caps(&self, caps: &gst::Caps) -> Result<(), gst::LoggableError> {
-        gst::debug!(CAT, imp: self, "negotiated_src_caps {:?}", caps);
-        self.parent_negotiated_src_caps(caps)
     }
 }
