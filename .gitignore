@@ -1,0 +1,15 @@
+/target
+*.o
+
+# go-bin-deb
+deb
+*.deb
+pkg-build
+artifacts
+
+*.dot
+*.txt
+*.webm
+testdata
+*.log
+*.m2ts
