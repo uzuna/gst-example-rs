@@ -1,6 +1,6 @@
 use derive_more::{Display, Error};
 use gst::{
-    prelude::{ElementExtManual, GObjectExtManualGst, GstBinExtManual},
+    prelude::{Continue, ElementExtManual, GObjectExtManualGst, GstBinExtManual},
     traits::{ElementExt, GstBinExt, GstObjectExt},
     Element, Pipeline,
 };
@@ -304,11 +304,85 @@ fn main() {
             }
         }
         Gst::AppSrcText { testsrc, videocaps } => {
-            let pipeline = app::build_appsrc_text_overlay(&testsrc, &videocaps)
+            let (pipeline, src_elem) = app::build_appsrc_text_overlay(&testsrc, &videocaps)
                 .expect("failed to build gst run pipeline");
-            if let Err(e) = run_pipeline(pipeline) {
-                log::error!("gstream error: {:?}", e);
-            }
+
+            let main_loop = gst::glib::MainLoop::new(None, false);
+            let main_loop_clone = main_loop.clone();
+
+            let bus = pipeline.bus().unwrap();
+            let mut pattern: u32 = 0;
+            // ximagesinkのKeyEventを受けてプロパティの切り替えとアプリケーションの終了を行う
+            bus.add_watch(move |_bus, message| {
+                use gst::MessageView;
+                match message.view() {
+                    MessageView::Element(_e) => {
+                        if let Some(s) = message.structure() {
+                            if "GstNavigationMessage" == s.name() {
+                                if let Ok(key_event) = s.get::<gst::event::Event>("event") {
+                                    if let Some(key_event) = key_event.structure() {
+                                        let event =
+                                            key_event.get::<gst::glib::GString>("event").unwrap();
+                                        let key =
+                                            key_event.get::<gst::glib::GString>("key").unwrap();
+                                        match (event.as_str(), key.as_str()) {
+                                            ("key-press", "Up") => {
+                                                if pattern < 11 {
+                                                    pattern += 1;
+                                                    src_elem.set_property_from_str(
+                                                        "pattern",
+                                                        &format!("{}", pattern),
+                                                    );
+                                                }
+                                            }
+                                            ("key-press", "Down") => {
+                                                if pattern > 0 {
+                                                    pattern -= 1;
+                                                    src_elem.set_property_from_str(
+                                                        "pattern",
+                                                        &format!("{}", pattern),
+                                                    );
+                                                }
+                                            }
+                                            ("key-press", "Escape") => {
+                                                log::info!("stopping application");
+                                                main_loop_clone.quit();
+                                                return Continue(false);
+                                            }
+                                            ("key-press", _) => {
+                                                log::debug!("press key {}", key);
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Continue(true)
+                    }
+                    MessageView::Error(err) => {
+                        eprintln!(
+                            "Error received from element {:?} {}",
+                            err.src().map(|s| s.path_string()),
+                            err.error()
+                        );
+                        eprintln!("Debugging information: {:?}", err.debug());
+                        main_loop_clone.quit();
+                        Continue(false)
+                    }
+                    MessageView::Eos(..) => {
+                        println!("Reached end of stream");
+                        main_loop_clone.quit();
+                        Continue(false)
+                    }
+                    _ => Continue(true),
+                }
+            })
+            .unwrap();
+
+            pipeline.set_state(gst::State::Playing).unwrap();
+            main_loop.run();
+            pipeline.set_state(gst::State::Null).unwrap();
         }
         Gst::GstBin { videocaps } => {
             let pipeline = build_bin(&videocaps).expect("failed to build gst run pipeline");
