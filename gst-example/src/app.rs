@@ -1,3 +1,5 @@
+//! GstAppを使うサンプルを置く
+
 use anyhow::Error;
 use gst::prelude::*;
 
@@ -8,7 +10,7 @@ use crate::{VideoCapsOpt, VideoTestSrcOpt};
 pub(crate) fn build_appsrc_text_overlay(
     testsrc: &VideoTestSrcOpt,
     videocaps: &VideoCapsOpt,
-) -> Result<gst::Pipeline, Error> {
+) -> Result<(gst::Pipeline, gst::Element), Error> {
     gst::init()?;
 
     let pipeline = gst::Pipeline::default();
@@ -34,6 +36,21 @@ pub(crate) fn build_appsrc_text_overlay(
     // textoverlayは先にvideoをlinkする。順序依存性がある
     videosrc.link_filtered(&textoverlay, &videocaps.get_caps())?;
     gst::Element::link_many(&[appsrc.upcast_ref(), &queue, &textoverlay])?;
+
+    // 一定時間でVideoSrcPatternを変える場合
+    // 再生時には関数がすでに終了してライフタイムが尽きるのでクロージャに関数内定義変数は渡せない
+    // {
+    //     let clock = SystemClock::obtain();
+    //     let now = clock.time().unwrap();
+    //     let id = clock.new_periodic_id(now + ClockTime::SECOND, ClockTime::SECOND);
+    //     id.wait_async(move |_, c2, _| {
+    //         if let Some(c) = c2 {
+    //             log::debug!("clock {} {:?}", c.seconds(), c);
+    //             videosrc.set_property_from_str("pattern", format!("{}", c.seconds() % 7).as_str());
+    //         }
+    //     })
+    //     .unwrap();
+    // }
 
     // appsrc関係の処理ブロック
     {
@@ -70,5 +87,5 @@ pub(crate) fn build_appsrc_text_overlay(
                 .build(),
         );
     }
-    Ok(pipeline)
+    Ok((pipeline, videosrc))
 }
