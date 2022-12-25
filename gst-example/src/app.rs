@@ -1,8 +1,7 @@
-
-
+//! GstAppを使うサンプルを置く
 
 use anyhow::Error;
-use gst::{prelude::*};
+use gst::prelude::*;
 
 use crate::{VideoCapsOpt, VideoTestSrcOpt};
 
