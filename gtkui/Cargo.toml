@@ -1,0 +1,16 @@
+[package]
+name = "gtkui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+env_logger = "0.9.1"
+gst = { package = "gstreamer", git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs", branch = "0.19", version = "0.19.1" }
+gst-video = { package = "gstreamer-video", git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs", branch = "0.19", version = "0.19"}
+gtk = "0.17.0"
+gdk = "0.17.0"
+anyhow = "1.0.69"
+log = "0.4.17"
+derive_more = "0.99.17"

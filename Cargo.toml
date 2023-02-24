@@ -5,6 +5,7 @@ members = [
     "meta/example-c-sys",
     "meta/example-rs",
     "meta/example-rs-sys",
+    "gtkui",
 ]
 
 [profile.release]
