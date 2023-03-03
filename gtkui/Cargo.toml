@@ -9,8 +9,12 @@ edition = "2021"
 env_logger = "0.9.1"
 gst = { package = "gstreamer", git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs", branch = "0.19", version = "0.19.1" }
 gst-video = { package = "gstreamer-video", git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs", branch = "0.19", version = "0.19"}
-gtk = "0.17.0"
-gdk = "0.17.0"
+glib = { git = "https://github.com/gtk-rs/gtk-rs-core", branch = "0.16", version = "0.16.2" }
+gdk = { git = "https://github.com/gtk-rs/gtk3-rs", branch = "0.16", version = "0.16" }
+gtk = { git = "https://github.com/gtk-rs/gtk3-rs", branch = "0.16", version = "0.16" }
 anyhow = "1.0.69"
 log = "0.4.17"
 derive_more = "0.99.17"
+
+[features]
+tutorial5-x11 = []
