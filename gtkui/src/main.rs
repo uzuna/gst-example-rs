@@ -2,8 +2,8 @@ mod tutorial5 {
     use std::os::raw::c_void;
     use std::process;
 
-    use gdk::prelude::*;
-    use gtk::prelude::*;
+    use gdk::{prelude::*, Screen};
+    use gtk::{prelude::*, StyleContext};
 
     use gst_video::prelude::*;
 
@@ -78,6 +78,10 @@ mod tutorial5 {
 
     // This creates all the GTK+ widgets that compose our application, and registers the callbacks
     fn create_ui(playbin: &gst::Element) -> AppWindow {
+        let file = gio::File::for_path("assets/gtk.css");
+        let cssp = gtk::CssProvider::new();
+        cssp.load_from_file(&file).unwrap();
+        StyleContext::add_provider_for_screen(&Screen::default().unwrap(), &cssp, 1);
         let main_window = gtk::Window::new(gtk::WindowType::Toplevel);
         main_window.connect_delete_event(|_, _| {
             gtk::main_quit();
